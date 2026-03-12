@@ -7,15 +7,15 @@ import re
 from urllib.parse import urlparse, parse_qs
 
 SPREADSHEET_ID = "1BrvBpYU7yr1Vcvoeqae70B1Nywsv5wGM8ZLF6hDQgGA"
-YOUTUBE_API_KEY = st.secrets.get("YOUTUBE_API_KEY", "")
+YOUTUBE_API_KEY = "AIzaSyD4CJ5MRW6Kp6B0IwvrcPuci6Wi9NmCzXQ"
 
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"],
+creds = Credentials.from_service_account_file(
+    "youtube-data-490005-098b4548b42b.json",
     scopes=scope
 )
 
