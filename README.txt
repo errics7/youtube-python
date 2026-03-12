@@ -8,7 +8,6 @@ Aplikasi web berbasis **Streamlit** untuk:
 * Input hari **libur / cuti editor**
 
 Aplikasi ini menggunakan:
-
 * Python
 * Streamlit
 * YouTube Data API v3
@@ -18,9 +17,7 @@ Aplikasi ini menggunakan:
 ---
 
 # 1. Install Python
-
 Download Python dari:
-
 https://www.python.org/downloads/
 
 Saat install **WAJIB centang:**
@@ -50,7 +47,6 @@ Python 3.x.x
 ---
 
 # 2. Install Streamlit
-
 Install menggunakan pip:
 
 ```bash
