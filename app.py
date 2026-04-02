@@ -66,17 +66,16 @@ p, span, div, label, li, a,
     color: var(--muted) !important;
 }
 
-/* Sidebar teks */
-[data-testid="stSidebar"] * {
+/* Sidebar teks – tidak termasuk tombol */
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span:not([data-testid="stLinkButton"] span),
+[data-testid="stSidebar"] div:not([data-testid="stLinkButton"] div),
+[data-testid="stSidebar"] label {
     color: var(--text) !important;
 }
+[data-testid="stSidebar"] .stCaption,
 [data-testid="stSidebar"] .stCaption * {
     color: var(--muted) !important;
-}
-
-/* Radio button text */
-[data-testid="stSidebar"] .stRadio label span {
-    color: var(--text) !important;
 }
 
 .stApp { background: var(--bg); }
@@ -87,19 +86,32 @@ p, span, div, label, li, a,
     border-right: 1px solid var(--border);
 }
 
-/* ── Buttons ── */
-.stButton > button {
+/* ── Buttons – semua tombol teks putih ── */
+.stButton > button,
+.stButton > button *,
+[data-testid="stSidebar"] .stButton > button,
+[data-testid="stSidebar"] .stButton > button *,
+[data-testid="stLinkButton"] a,
+[data-testid="stLinkButton"] a * {
+    color: #ffffff !important;
     border-radius: 8px !important;
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 600 !important;
     transition: all .18s ease !important;
-    color: #ffffff !important;
 }
-.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,.12) !important; }
+.stButton > button:hover,
+[data-testid="stLinkButton"] a:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,.2) !important;
+    opacity: 0.92;
+}
 
-/* Secondary button */
-.stButton > button[kind="secondary"] {
+/* Tombol secondary (Hapus) – teks gelap, background terang */
+.stButton > button[kind="secondary"],
+.stButton > button[kind="secondary"] * {
     color: var(--text) !important;
+    background: var(--surface2) !important;
+    border: 1.5px solid var(--border) !important;
 }
 
 /* ── Text areas & inputs ── */
