@@ -38,7 +38,45 @@ st.markdown("""
 /* ── Global reset ── */
 html, body, [class*="css"] {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
-    color: var(--text);
+    color: var(--text) !important;
+}
+
+.stApp { background: var(--bg); }
+
+/* ── Force semua teks terlihat (fix warna menyatu dengan bg gelap) ── */
+p, span, div, label, li, a,
+.stMarkdown, .stMarkdown p,
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] span,
+[data-testid="stMarkdownContainer"] div {
+    color: var(--text) !important;
+}
+
+/* Label input & select */
+.stTextArea label, .stTextInput label,
+.stSelectbox label, .stDateInput label,
+.stRadio label, .stCheckbox label,
+[data-testid="stWidgetLabel"] {
+    color: var(--text) !important;
+    font-weight: 600 !important;
+}
+
+/* Caption / hint text */
+.stCaption, [data-testid="stCaptionContainer"] {
+    color: var(--muted) !important;
+}
+
+/* Sidebar teks */
+[data-testid="stSidebar"] * {
+    color: var(--text) !important;
+}
+[data-testid="stSidebar"] .stCaption * {
+    color: var(--muted) !important;
+}
+
+/* Radio button text */
+[data-testid="stSidebar"] .stRadio label span {
+    color: var(--text) !important;
 }
 
 .stApp { background: var(--bg); }
@@ -55,8 +93,14 @@ html, body, [class*="css"] {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 600 !important;
     transition: all .18s ease !important;
+    color: #ffffff !important;
 }
 .stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,.12) !important; }
+
+/* Secondary button */
+.stButton > button[kind="secondary"] {
+    color: var(--text) !important;
+}
 
 /* ── Text areas & inputs ── */
 .stTextArea textarea, .stTextInput input {
@@ -65,6 +109,7 @@ html, body, [class*="css"] {
     font-family: 'DM Mono', monospace !important;
     font-size: 13px !important;
     background: var(--surface) !important;
+    color: var(--text) !important;
     transition: border-color .15s;
 }
 .stTextArea textarea:focus, .stTextInput input:focus {
@@ -75,6 +120,15 @@ html, body, [class*="css"] {
 /* ── Select boxes ── */
 .stSelectbox select, [data-baseweb="select"] {
     border-radius: 8px !important;
+}
+[data-baseweb="select"] * {
+    color: var(--text) !important;
+}
+
+/* ── Date input ── */
+.stDateInput input {
+    color: var(--text) !important;
+    background: var(--surface) !important;
 }
 
 /* ── Dividers ── */
@@ -334,29 +388,35 @@ if "📥" in page:
         st.error(f"❌ Maksimal {MAX_LINKS} link YouTube per pengiriman.")
         valid_links = valid_links[:MAX_LINKS]
 
-    # ── TOMBOL PREVIEW + KIRIM (sticky atas) ──────────────────────
-    col_prev, col_send, col_clear = st.columns([2, 2, 1])
+    # ── TOMBOL KIRIM & HAPUS ───────────────────────────────────────
+    col_send, col_clear = st.columns([3, 1])
 
-    with col_prev:
-        btn_preview = st.button("🔍 Preview Video", use_container_width=True, type="secondary")
     with col_send:
         btn_send = st.button("▶️ Kirim ke Google Sheets", use_container_width=True, type="primary")
     with col_clear:
-        btn_clear = st.button("🗑️ Hapus", use_container_width=True)
+        btn_clear = st.button("🗑️ Hapus Semua", use_container_width=True)
 
+    # Tombol Hapus: reset session state lalu rerun agar textbox ikut kosong
     if btn_clear:
-        st.session_state.links_text = ""
+        st.session_state.links_text   = ""
         st.session_state.preview_data = []
         st.rerun()
 
-    # ── FETCH PREVIEW DATA ─────────────────────────────────────────
+    # ── FETCH PREVIEW DATA OTOMATIS ────────────────────────────────
+    # Preview langsung muncul saat ada link valid, tanpa tombol tambahan
     video_ids    = [get_video_id(url) for _, url in valid_links]
     original_map = {get_video_id(url): url for _, url in valid_links}
 
-    if btn_preview and video_ids:
-        with st.spinner("Mengambil data video..."):
+    # Hanya fetch ulang jika set ID berubah dari preview sebelumnya
+    prev_ids = {item["id"] for item in st.session_state.preview_data}
+    curr_ids = set(vid for vid in video_ids if vid)
+
+    if curr_ids and curr_ids != prev_ids:
+        with st.spinner("Memuat preview video..."):
             resp = youtube.videos().list(part="snippet", id=",".join(video_ids)).execute()
             st.session_state.preview_data = resp.get("items", [])
+    elif not curr_ids:
+        st.session_state.preview_data = []
 
     # ── TAMPILKAN PREVIEW ──────────────────────────────────────────
     if st.session_state.preview_data:
@@ -461,7 +521,7 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    col_form, col_info = st.columns([2, 1])
+    col_form, _ = st.columns([2, 1])
 
     with col_form:
         # ── FORM INPUT ─────────────────────────────────────────────
@@ -471,37 +531,36 @@ else:
         LEAVE_OPTIONS = ["Libur", "Cuti", "Izin", "Sakit", "Lainnya"]
         leave_type = st.selectbox("📋 Jenis Kegiatan", LEAVE_OPTIONS)
 
-        # Jika memilih "Lainnya" tampilkan text input
+        # Jika memilih "Lainnya" tampilkan text input (wajib diisi)
         custom_activity = ""
         if leave_type == "Lainnya":
             custom_activity = st.text_input(
-                "✏️ Isi Kegiatan",
+                "✏️ Isi Kegiatan *",
                 placeholder="Contoh: Rapat, Perjalanan Dinas, dll."
             )
-            if not custom_activity.strip():
-                st.caption("⚠️ Harap isi keterangan kegiatan.")
 
         editor = st.selectbox("👤 Editor", ["Erricson Bernedy S"])
 
         st.markdown("")  # spacer
         btn_leave = st.button("💾 Simpan Entri", type="primary", use_container_width=True)
 
-    with col_info:
+        # ── BOX INFO (di bawah tombol) ─────────────────────────────
         st.markdown("""
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-top:36px">
-            <div style="font-weight:700;font-size:14px;margin-bottom:8px">📌 Info</div>
-            <div style="font-size:13px;color:var(--muted);line-height:1.7">
-                Entri akan dicatat ke sheet <b>VOD</b> dan <b>SHORT</b> sekaligus, pada kolom <i>Keterangan</i>.
+        <div style="background:#EEF4FF;border:1px solid #BDD3FF;border-radius:10px;padding:14px 16px;margin-top:16px">
+            <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#1A1916">📌 Info</div>
+            <div style="font-size:13px;color:#3D3D3D;line-height:1.7">
+                Entri akan dicatat ke sheet <b>VOD</b> dan <b>SHORT</b> sekaligus,
+                pada kolom <i>Keterangan</i>.
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     # ── SIMPAN ─────────────────────────────────────────────────────
     if btn_leave:
-        # Tentukan nilai keterangan
+        # Validasi wajib untuk "Lainnya"
         if leave_type == "Lainnya":
             if not custom_activity.strip():
-                st.error("❌ Kolom 'Isi Kegiatan' tidak boleh kosong saat memilih Lainnya.")
+                st.error("❌ Kolom 'Isi Kegiatan' wajib diisi saat memilih Lainnya.")
                 st.stop()
             keterangan = custom_activity.strip()
         else:
