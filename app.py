@@ -64,13 +64,56 @@ body, .stApp,
     color: var(--text) !important;
 }
 
-/* ── SEMBUNYIKAN tombol collapse bawaan Streamlit (yang menampilkan teks icon) ── */
-[data-testid="stSidebarCollapseButton"],
-[data-testid="collapsedControl"] {
-    display: none !important;
+/* ── Tombol collapse/expand sidebar ──
+   Streamlit menggunakan Material Symbols font untuk icon di <span>.
+   font-family di global CSS (*) menyebabkan font icon tidak load → teks mentah muncul.
+   Solusi: kembalikan font-family khusus untuk elemen tombol collapse. ── */
+[data-testid="stSidebarCollapseButton"] span,
+[data-testid="stSidebarCollapseButton"] button span {
+    font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
+}
+[data-testid="stSidebarCollapseButton"] button {
+    background-color: var(--text) !important;
+    border-radius: 6px !important;
+    color: #ffffff !important;
+}
+[data-testid="stSidebarCollapseButton"] button:hover {
+    background-color: var(--muted) !important;
+}
+/* Tombol saat sidebar tertutup (collapsedControl) */
+[data-testid="collapsedControl"] span {
+    font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
+}
+[data-testid="collapsedControl"] button {
+    background-color: var(--surface) !important;
+    border: 1.5px solid var(--border) !important;
+    border-radius: 6px !important;
+    color: var(--text) !important;
+}
+[data-testid="collapsedControl"] button:hover {
+    background-color: var(--surface2) !important;
 }
 
-/* ── Label widget ── */
+/* ── LINK BUTTON "Buka Google Sheets" – hijau dengan hover putih ── */
+[data-testid="stLinkButton"] a {
+    background-color: #16A34A !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    border: 2px solid #16A34A !important;
+    text-decoration: none !important;
+    transition: background-color .18s ease, color .18s ease !important;
+    display: block !important;
+}
+[data-testid="stLinkButton"] a:hover {
+    background-color: #ffffff !important;
+    color: #16A34A !important;
+    border-color: #16A34A !important;
+    filter: none !important;
+}
+/* Override teks child elements agar ikut berubah saat hover */
+[data-testid="stLinkButton"] a p { color: #ffffff !important; }
+[data-testid="stLinkButton"]:has(a:hover) p { color: #16A34A !important; }
 [data-testid="stWidgetLabel"],
 [data-testid="stWidgetLabel"] * {
     color: var(--text) !important;
@@ -115,40 +158,6 @@ body, .stApp,
 .stButton > button[kind="secondary"]:hover {
     background-color: var(--border) !important;
     filter: none !important;
-}
-
-/* ── LINK BUTTON "Buka Google Sheets" – hijau ── */
-[data-testid="stLinkButton"] a {
-    background-color: #16A34A !important;
-    color: #ffffff !important;
-    font-weight: 600 !important;
-    border-radius: 8px !important;
-    border: 2px solid #16A34A !important;
-    text-decoration: none !important;
-    transition: all .18s ease !important;
-}
-[data-testid="stLinkButton"] a p,
-[data-testid="stLinkButton"] a span,
-[data-testid="stLinkButton"] a div,
-[data-testid="stLinkButton"] a * {
-    color: #ffffff !important;
-    background: transparent !important;
-}
-/* Hover: bg putih, teks hijau */
-[data-testid="stLinkButton"] a:hover {
-    background-color: #ffffff !important;
-    color: #16A34A !important;
-    border-color: #16A34A !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(22,163,74,.2) !important;
-    filter: none !important;
-}
-[data-testid="stLinkButton"] a:hover p,
-[data-testid="stLinkButton"] a:hover span,
-[data-testid="stLinkButton"] a:hover div,
-[data-testid="stLinkButton"] a:hover * {
-    color: #16A34A !important;
-    background: transparent !important;
 }
 
 /* ── SELECT BOX – bg putih, teks gelap ── */
@@ -362,28 +371,7 @@ with st.sidebar:
         label_visibility="collapsed"
     )
     st.markdown("---")
-    # Tombol Buka Google Sheets pakai HTML agar warna bisa dikontrol penuh
-    st.markdown(f"""
-    <a href="{SHEETS_URL}" target="_blank" style="
-        display: block;
-        width: 100%;
-        padding: 10px 16px;
-        background-color: #16A34A;
-        color: #ffffff !important;
-        font-weight: 600;
-        font-size: 14px;
-        border-radius: 8px;
-        text-align: center;
-        text-decoration: none;
-        border: 2px solid #16A34A;
-        box-sizing: border-box;
-        transition: all .18s ease;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    "
-    onmouseover="this.style.backgroundColor='#ffffff';this.style.color='#16A34A';"
-    onmouseout="this.style.backgroundColor='#16A34A';this.style.color='#ffffff';"
-    >📊 Buka Google Sheets</a>
-    """, unsafe_allow_html=True)
+    st.link_button("📊 Buka Google Sheets", SHEETS_URL, use_container_width=True)
     st.caption(f"Max {MAX_LINKS} link per sesi")
 
 
