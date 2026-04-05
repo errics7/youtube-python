@@ -17,14 +17,11 @@ st.set_page_config(
 
 # ─────────────────────────────────────────────
 # STYLING
-# Catatan: Streamlit merender dalam tema gelap secara default.
-# Kita paksa tema terang penuh lewat CSS agar semua elemen terbaca.
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
-/* ── Variabel warna tema ── */
 :root {
     --bg:      #F5F4F0;
     --surface: #FFFFFF;
@@ -39,49 +36,94 @@ st.markdown("""
     --shadow:  0 2px 12px rgba(0,0,0,0.08);
 }
 
-/* ── Background & font dasar ── */
+/* ── Background & font ── */
 .stApp, [data-testid="stAppViewContainer"] { background: var(--bg) !important; }
 p, div, label, input, textarea, select, h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     color: var(--text);
 }
 
-/* ── Sidebar ── */
-[data-testid="stSidebar"] {
-    background: var(--surface) !important;
-    border-right: 1px solid var(--border) !important;
-}
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] label {
-    color: var(--text) !important;
+/* ── Sembunyikan sidebar bawaan Streamlit sepenuhnya ── */
+[data-testid="stSidebar"],
+[data-testid="stSidebarCollapseButton"],
+[data-testid="collapsedControl"] {
+    display: none !important;
 }
 
-/* ── Tombol collapse sidebar – tampilkan dengan kotak ── */
-[data-testid="stSidebarCollapseButton"] span,
-[data-testid="stSidebarCollapseButton"] button span,
-[data-testid="collapsedControl"] span,
-[data-testid="collapsedControl"] button span {
-    font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
+/* ── NAVBAR custom ── */
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+    margin-bottom: 32px;
 }
-[data-testid="stSidebarCollapseButton"] button {
-    background-color: var(--text) !important;
-    border-radius: 6px !important;
-    border: none !important;
-    color: #ffffff !important;
-    padding: 4px 6px !important;
-}
-[data-testid="stSidebarCollapseButton"] button:hover {
-    background-color: var(--muted) !important;
-}
-[data-testid="collapsedControl"] button {
-    background-color: var(--surface) !important;
-    border: 1.5px solid var(--border) !important;
-    border-radius: 6px !important;
+.navbar-brand {
+    font-weight: 700;
+    font-size: 16px;
     color: var(--text) !important;
-    padding: 4px 6px !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
 }
-[data-testid="collapsedControl"] button:hover {
-    background-color: var(--surface2) !important;
+.navbar-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.navbar-link {
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted) !important;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    transition: all .15s ease;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+.navbar-link:hover {
+    background: var(--surface2);
+    color: var(--text) !important;
+}
+.navbar-link.active {
+    background: var(--text);
+    color: #ffffff !important;
+    font-weight: 600;
+}
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.navbar-sheets-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    background: var(--green);
+    color: #ffffff !important;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 2px solid var(--green);
+    transition: background .15s, color .15s;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+.navbar-sheets-btn:hover {
+    background: #ffffff;
+    color: var(--green) !important;
 }
 
 /* ── Label widget ── */
@@ -96,7 +138,7 @@ p, div, label, input, textarea, select, h1, h2, h3, h4, h5, h6 {
     color: var(--muted) !important;
 }
 
-/* ── Tombol primary (Kirim, Simpan) ── */
+/* ── Tombol primary ── */
 .stButton > button {
     color: #ffffff !important;
     font-weight: 600 !important;
@@ -118,34 +160,6 @@ p, div, label, input, textarea, select, h1, h2, h3, h4, h5, h6 {
 .stButton > button[kind="secondary"]:hover {
     background-color: var(--border) !important;
     filter: none !important;
-}
-
-/* ── LINK BUTTON "Buka Google Sheets" ──
-   Pendekatan: styling pada elemen <a> langsung tanpa menyentuh child,
-   lalu gunakan CSS inheritance — child akan inherit color dari parent <a>.
-   KUNCI: jangan ada rule lain yang override color pada child elemen ini. ── */
-[data-testid="stLinkButton"] a {
-    background-color: var(--green) !important;
-    border: 2px solid var(--green) !important;
-    border-radius: 8px !important;
-    text-decoration: none !important;
-    transition: background-color .18s, border-color .18s !important;
-    display: block !important;
-    /* Set color di sini — child akan inherit jika tidak ada override lain */
-    color: #ffffff !important;
-}
-/* Paksa inheritance turun ke semua child — ini HARUS setelah rule di atas */
-[data-testid="stLinkButton"] a > *,
-[data-testid="stLinkButton"] a > * > *,
-[data-testid="stLinkButton"] a > * > * > * {
-    color: inherit !important;
-    background: transparent !important;
-}
-/* Hover state */
-[data-testid="stLinkButton"] a:hover {
-    background-color: #ffffff !important;
-    border-color: var(--green) !important;
-    color: var(--green) !important;
 }
 
 /* ── Select box ── */
@@ -176,8 +190,7 @@ p, div, label, input, textarea, select, h1, h2, h3, h4, h5, h6 {
 }
 
 /* ── Text area & text input ── */
-.stTextArea textarea,
-.stTextInput input {
+.stTextArea textarea, .stTextInput input {
     background: var(--surface) !important;
     color: var(--text) !important;
     border: 1.5px solid var(--border) !important;
@@ -185,15 +198,13 @@ p, div, label, input, textarea, select, h1, h2, h3, h4, h5, h6 {
     font-family: 'DM Mono', monospace !important;
     font-size: 13px !important;
 }
-.stTextArea textarea:focus,
-.stTextInput input:focus {
+.stTextArea textarea:focus, .stTextInput input:focus {
     border-color: var(--accent2) !important;
     box-shadow: 0 0 0 3px rgba(42,106,232,.12) !important;
 }
 
 /* ── Date input ── */
-.stDateInput > div > div,
-.stDateInput input {
+.stDateInput > div > div, .stDateInput input {
     background: var(--surface) !important;
     color: var(--text) !important;
     border: 1.5px solid var(--border) !important;
@@ -248,6 +259,14 @@ hr { border-color: var(--border) !important; }
     font-size: 11px; font-weight: 700; letter-spacing: .08em;
     text-transform: uppercase; color: var(--muted) !important; margin-bottom: 8px;
 }
+
+/* ── Kurangi padding konten utama karena tidak ada sidebar ── */
+[data-testid="stMainBlockContainer"] {
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -259,10 +278,13 @@ SPREADSHEET_ID = "1BrvBpYU7yr1Vcvoeqae70B1Nywsv5wGM8ZLF6hDQgGA"
 SHEETS_URL     = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}"
 MAX_LINKS      = 15
 
+# Urutan kolom sesuai Sheets (dari gambar): Tanggal | Editor | Judul | Link | Views | Keterangan
+HEADERS_VOD   = ["Tanggal", "Editor", "Judul", "Link", "Views", "Keterangan"]
+HEADERS_SHORT = ["Tanggal", "Editor", "Judul", "Link", "Views", "Keterangan"]
+
 
 # ─────────────────────────────────────────────
 # INISIALISASI GOOGLE API
-# @st.cache_resource = hanya berjalan sekali, tidak reconnect tiap interaksi
 # ─────────────────────────────────────────────
 @st.cache_resource
 def init_google_clients():
@@ -289,18 +311,15 @@ def get_video_id(url: str):
     shorts_match = re.search(r'shorts/([a-zA-Z0-9_-]{11})', url)
     if shorts_match:
         return shorts_match.group(1)
-
     yt_match = re.search(r'(?:v=|youtu\.be/|embed/|watch\?v=)([^&"?\s]{11})', url)
     if yt_match:
         return yt_match.group(1)
-
     parsed = urlparse(url)
     if parsed.hostname in ('www.youtube.com', 'youtube.com', 'm.youtube.com'):
         if 'v' in parse_qs(parsed.query):
             return parse_qs(parsed.query)['v'][0]
     elif parsed.hostname == 'youtu.be':
         return parsed.path[1:]
-
     return None
 
 
@@ -313,13 +332,13 @@ def format_date(published: str) -> str:
 
 
 def extract_editor(description: str) -> str:
-    """Ambil nama editor dari baris 'Editor Video:' di deskripsi video."""
+    """Ambil nama editor dari deskripsi video."""
     for line in description.split("\n"):
         if "editor video" in line.lower():
             parts = line.split(":", 1)
             if len(parts) > 1:
                 return parts[1].strip()
-    return "Tidak tercantum"
+    return "Erricson Bernedy S"
 
 
 def get_or_create_worksheet(name: str, headers: list):
@@ -333,36 +352,75 @@ def get_or_create_worksheet(name: str, headers: list):
 
 
 # ─────────────────────────────────────────────
-# SESSION STATE – inisialisasi variabel persisten
+# SESSION STATE
 # ─────────────────────────────────────────────
+if "page"          not in st.session_state:
+    st.session_state.page          = "input"
 if "links_text"    not in st.session_state:
     st.session_state.links_text    = ""
 if "preview_data"  not in st.session_state:
     st.session_state.preview_data  = []
-# clear_trigger: setiap increment mengubah key textbox → widget di-reset sempurna
 if "clear_trigger" not in st.session_state:
     st.session_state.clear_trigger = 0
 
 
 # ─────────────────────────────────────────────
-# SIDEBAR – NAVIGASI
+# NAVBAR
 # ─────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## 🎬 YT Sheet Tracker")
-    st.markdown("---")
-    page = st.radio(
-        "Menu",
-        ["📥  Input Video YouTube", "🗓️  Libur & Cuti"],
-        label_visibility="collapsed"
-    )
-    st.markdown("---")
-    st.link_button("📊 Buka Google Sheets", SHEETS_URL, use_container_width=True)
+active_input = "active" if st.session_state.page == "input" else ""
+active_leave = "active" if st.session_state.page == "leave" else ""
+
+st.markdown(f"""
+<div class="navbar">
+    <span class="navbar-brand">🎬 YT Sheet Tracker</span>
+    <div class="navbar-links">
+        <form method="get" style="display:inline">
+            <button class="navbar-link {active_input}"
+                onclick="window.location.hash='input'; return false;"
+                id="btn-input">
+                📥 Input Video YouTube
+            </button>
+        </form>
+        <form method="get" style="display:inline">
+            <button class="navbar-link {active_leave}"
+                onclick="window.location.hash='leave'; return false;"
+                id="btn-leave">
+                🗓️ Libur & Cuti
+            </button>
+        </form>
+    </div>
+    <div class="navbar-right">
+        <a href="{SHEETS_URL}" target="_blank" class="navbar-sheets-btn">
+            📊 Buka Google Sheets
+        </a>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Tombol navigasi pakai st.button agar bisa trigger rerun
+col_nav1, col_nav2, col_spacer = st.columns([1, 1, 6])
+with col_nav1:
+    if st.button("📥 Input Video YouTube",
+                 type="primary" if st.session_state.page == "input" else "secondary",
+                 use_container_width=True,
+                 key="nav_input"):
+        st.session_state.page = "input"
+        st.rerun()
+with col_nav2:
+    if st.button("🗓️ Libur & Cuti",
+                 type="primary" if st.session_state.page == "leave" else "secondary",
+                 use_container_width=True,
+                 key="nav_leave"):
+        st.session_state.page = "leave"
+        st.rerun()
+
+st.markdown("---")
 
 
 # ═══════════════════════════════════════════════════════════════════
 # HALAMAN 1 – INPUT VIDEO YOUTUBE
 # ═══════════════════════════════════════════════════════════════════
-if "📥" in page:
+if st.session_state.page == "input":
 
     st.markdown("""
     <div class="page-header">
@@ -370,19 +428,14 @@ if "📥" in page:
         <div>
             <div class="page-header-title">Input Video YouTube</div>
             <div class="page-header-sub">Rekam data video ke Google Sheets secara otomatis</div>
-            <div style="font-size:11px;color:#7A776F;margin-top:4px">Maksimal 15 link per sesi</div>
+            <div style="font-size:11px;color:#7A776F;margin-top:2px">Maksimal 15 link per sesi</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="section-label">Masukkan Link YouTube</div>', unsafe_allow_html=True)
 
-    # ── TEXTBOX INPUT ──────────────────────────────────────────────
-    # Teknik reset yang benar di Streamlit:
-    # Ubah 'key' widget → Streamlit anggap widget baru → value kembali kosong.
-    # Tanpa ini, mengubah session_state.links_text tidak akan mengubah isi textbox
-    # karena Streamlit prioritaskan nilai yang user ketik (widget state) di atas
-    # nilai dari session_state.
+    # ── TEXTBOX ───────────────────────────────────────────────────
     input_key  = f"links_input_{st.session_state.clear_trigger}"
     links_text = st.text_area(
         label="links_input",
@@ -392,9 +445,9 @@ if "📥" in page:
         label_visibility="collapsed",
         key=input_key,
     )
-    st.session_state.links_text = links_text   # sinkronkan tiap render
+    st.session_state.links_text = links_text
 
-    # ── PARSE & VALIDASI ───────────────────────────────────────────
+    # ── PARSE & VALIDASI ──────────────────────────────────────────
     raw_lines     = [l.strip() for l in links_text.split("\n") if l.strip()]
     valid_links   = []
     invalid_lines = []
@@ -429,22 +482,20 @@ if "📥" in page:
         st.error(f"❌ Maksimal {MAX_LINKS} link YouTube per pengiriman.")
         valid_links = valid_links[:MAX_LINKS]
 
-    # ── TOMBOL KIRIM & HAPUS ───────────────────────────────────────
+    # ── TOMBOL ────────────────────────────────────────────────────
     col_send, col_clear = st.columns([3, 1])
     with col_send:
         btn_send  = st.button("▶️ Kirim ke Google Sheets", use_container_width=True, type="primary")
     with col_clear:
         btn_clear = st.button("🗑️ Hapus Semua", use_container_width=True)
 
-    # ── HAPUS: increment trigger → key berubah → textbox kosong ───
     if btn_clear:
         st.session_state.links_text    = ""
         st.session_state.preview_data  = []
         st.session_state.clear_trigger += 1
         st.rerun()
 
-    # ── PREVIEW OTOMATIS ───────────────────────────────────────────
-    # Fetch hanya jika set video ID berubah (hemat API quota YouTube)
+    # ── PREVIEW OTOMATIS ──────────────────────────────────────────
     video_ids    = [get_video_id(url) for _, url in valid_links]
     original_map = {get_video_id(url): url for _, url in valid_links}
 
@@ -460,7 +511,7 @@ if "📥" in page:
     elif not curr_ids:
         st.session_state.preview_data = []
 
-    # ── TAMPILKAN PREVIEW – 3 kartu per baris ─────────────────────
+    # ── TAMPILKAN PREVIEW ─────────────────────────────────────────
     if st.session_state.preview_data:
         st.markdown("---")
         st.markdown('<div class="section-label">Preview Video</div>', unsafe_allow_html=True)
@@ -480,7 +531,6 @@ if "📥" in page:
                     '<span class="yt-card-type badge-vod">VOD</span>'
                 )
                 num = row_start + col_idx + 1
-
                 with cols[col_idx]:
                     st.markdown(f"""
                     <div class="yt-card">
@@ -497,9 +547,8 @@ if "📥" in page:
         if not video_ids:
             st.error("❌ Tidak ada link YouTube yang valid untuk dikirim.")
         else:
-            HEADERS  = ["Judul", "Link", "Editor", "Upload", "Views", "Keterangan"]
-            ws_short = get_or_create_worksheet("SHORT", HEADERS)
-            ws_vod   = get_or_create_worksheet("VOD",   HEADERS)
+            ws_short = get_or_create_worksheet("SHORT", HEADERS_SHORT)
+            ws_vod   = get_or_create_worksheet("VOD",   HEADERS_VOD)
 
             with st.spinner("Mengirim data ke Google Sheets..."):
                 resp = youtube.videos().list(
@@ -512,23 +561,17 @@ if "📥" in page:
 
             for item in resp.get("items", []):
                 try:
-                    vid_id = item["id"]
-                    title  = item["snippet"]["title"]
-                    desc   = item["snippet"].get("description", "")
-                    pub    = item["snippet"]["publishedAt"]
-                    url    = original_map.get(vid_id, "")
-                    editor = extract_editor(desc)
-
-                    # FIX: Konversi views ke integer agar bisa dihitung di Sheets.
-                    # YouTube API mengembalikan string (mis. "181275"), bukan angka.
-                    # Tanpa konversi, gspread mengirimnya sebagai teks → Sheets
-                    # menyimpannya dengan prefix apostrof ('181275) → tidak bisa SUM.
+                    vid_id    = item["id"]
+                    title     = item["snippet"]["title"]
+                    desc      = item["snippet"].get("description", "")
+                    pub       = item["snippet"]["publishedAt"]
+                    url       = original_map.get(vid_id, "")
+                    editor    = extract_editor(desc)
                     views_int = int(item.get("statistics", {}).get("viewCount", "0"))
 
-                    row = [title, url, editor, format_date(pub), views_int, ""]
+                    # Urutan kolom: Tanggal | Editor | Judul | Link | Views | Keterangan
+                    row = [format_date(pub), editor, title, url, views_int, ""]
 
-                    # value_input_option="USER_ENTERED" agar Sheets interpret
-                    # angka sebagai angka (bukan raw string)
                     if "/shorts/" in url:
                         ws_short.append_row(row, value_input_option="USER_ENTERED")
                     else:
@@ -544,7 +587,6 @@ if "📥" in page:
             if failed_ids:
                 for vid, err in failed_ids:
                     st.warning(f"⚠️ Gagal mengirim `{vid}`: {err}")
-                # Sisakan hanya link yang gagal di textbox
                 failed_set = {v for v, _ in failed_ids}
                 remaining  = "\n".join(
                     u for v, u in original_map.items() if v in failed_set
@@ -552,10 +594,9 @@ if "📥" in page:
                 st.session_state.links_text   = remaining
                 st.session_state.preview_data = []
             else:
-                # Semua berhasil → kosongkan input & preview
                 st.session_state.links_text    = ""
                 st.session_state.preview_data  = []
-                st.session_state.clear_trigger += 1   # trigger reset textbox
+                st.session_state.clear_trigger += 1
 
             st.rerun()
 
@@ -582,7 +623,6 @@ else:
         LEAVE_OPTIONS = ["Libur", "Cuti", "Izin", "Sakit", "Lainnya"]
         leave_type    = st.selectbox("📋 Jenis Kegiatan", LEAVE_OPTIONS)
 
-        # Tampilkan field kustom saat pilih "Lainnya" (wajib diisi)
         custom_activity = ""
         if leave_type == "Lainnya":
             custom_activity = st.text_input(
@@ -595,11 +635,10 @@ else:
         st.markdown("")
         btn_leave = st.button("💾 Simpan Entri", type="primary", use_container_width=True)
 
-        # Info box di bawah tombol dengan warna yang jelas
         st.markdown("""
         <div style="background:#EEF4FF;border:1px solid #BDD3FF;border-radius:10px;
                     padding:14px 16px;margin-top:16px">
-            <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#1A1916 !important">
+            <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#1A1916">
                 📌 Info
             </div>
             <div style="font-size:13px;color:#3D3D3D;line-height:1.7">
@@ -609,9 +648,8 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-    # ── SIMPAN ENTRI ───────────────────────────────────────────────
+    # ── SIMPAN ────────────────────────────────────────────────────
     if btn_leave:
-        # Validasi: field "Lainnya" wajib diisi sebelum simpan
         if leave_type == "Lainnya":
             if not custom_activity.strip():
                 st.error("❌ Kolom 'Isi Kegiatan' wajib diisi saat memilih Lainnya.")
@@ -621,11 +659,12 @@ else:
             keterangan = leave_type
 
         formatted_date = leave_date.strftime("%d-%m-%Y")
-        row = ["", "", editor, formatted_date, "", keterangan]
 
-        HEADERS  = ["Judul", "Link", "Editor", "Upload", "Views", "Keterangan"]
-        ws_vod   = get_or_create_worksheet("VOD",   HEADERS)
-        ws_short = get_or_create_worksheet("SHORT", HEADERS)
+        # Urutan kolom: Tanggal | Editor | Judul | Link | Views | Keterangan
+        row = [formatted_date, editor, "", "", "", keterangan]
+
+        ws_vod   = get_or_create_worksheet("VOD",   HEADERS_VOD)
+        ws_short = get_or_create_worksheet("SHORT", HEADERS_SHORT)
 
         try:
             ws_vod.append_row(row)
