@@ -65,36 +65,41 @@ body, .stApp,
 }
 
 /* ── Tombol collapse/expand sidebar ──
-   Streamlit menggunakan Material Symbols font untuk icon di <span>.
-   font-family di global CSS (*) menyebabkan font icon tidak load → teks mentah muncul.
-   Solusi: kembalikan font-family khusus untuk elemen tombol collapse. ── */
+   Hapus kotak/border, buat transparan, hanya tampilkan icon saja. ── */
 [data-testid="stSidebarCollapseButton"] span,
 [data-testid="stSidebarCollapseButton"] button span {
     font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
 }
 [data-testid="stSidebarCollapseButton"] button {
-    background-color: var(--text) !important;
-    border-radius: 6px !important;
-    color: #ffffff !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    color: var(--text) !important;
+    padding: 4px !important;
 }
 [data-testid="stSidebarCollapseButton"] button:hover {
-    background-color: var(--muted) !important;
+    background-color: var(--surface2) !important;
+    border-radius: 6px !important;
 }
-/* Tombol saat sidebar tertutup (collapsedControl) */
+/* Tombol saat sidebar tertutup */
 [data-testid="collapsedControl"] span {
     font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
 }
 [data-testid="collapsedControl"] button {
     background-color: var(--surface) !important;
-    border: 1.5px solid var(--border) !important;
-    border-radius: 6px !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
     color: var(--text) !important;
+    padding: 4px !important;
 }
 [data-testid="collapsedControl"] button:hover {
     background-color: var(--surface2) !important;
+    border-radius: 6px !important;
 }
 
-/* ── LINK BUTTON "Buka Google Sheets" – hijau dengan hover putih ── */
+/* ── LINK BUTTON "Buka Google Sheets" – hijau, teks PUTIH ── */
 [data-testid="stLinkButton"] a {
     background-color: #16A34A !important;
     color: #ffffff !important;
@@ -105,15 +110,26 @@ body, .stApp,
     transition: background-color .18s ease, color .18s ease !important;
     display: block !important;
 }
+/* Paksa semua child elemen teks juga putih */
+[data-testid="stLinkButton"] a *,
+[data-testid="stLinkButton"] a p,
+[data-testid="stLinkButton"] a span,
+[data-testid="stLinkButton"] a div {
+    color: #ffffff !important;
+}
+/* Hover: bg putih, teks hijau */
 [data-testid="stLinkButton"] a:hover {
     background-color: #ffffff !important;
     color: #16A34A !important;
     border-color: #16A34A !important;
     filter: none !important;
 }
-/* Override teks child elements agar ikut berubah saat hover */
-[data-testid="stLinkButton"] a p { color: #ffffff !important; }
-[data-testid="stLinkButton"]:has(a:hover) p { color: #16A34A !important; }
+[data-testid="stLinkButton"] a:hover *,
+[data-testid="stLinkButton"] a:hover p,
+[data-testid="stLinkButton"] a:hover span,
+[data-testid="stLinkButton"] a:hover div {
+    color: #16A34A !important;
+}
 [data-testid="stWidgetLabel"],
 [data-testid="stWidgetLabel"] * {
     color: var(--text) !important;
@@ -372,7 +388,6 @@ with st.sidebar:
     )
     st.markdown("---")
     st.link_button("📊 Buka Google Sheets", SHEETS_URL, use_container_width=True)
-    st.caption(f"Max {MAX_LINKS} link per sesi")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -386,6 +401,7 @@ if "📥" in page:
         <div>
             <div class="page-header-title">Input Video YouTube</div>
             <div class="page-header-sub">Rekam data video ke Google Sheets secara otomatis</div>
+            <div style="font-size:11px;color:#7A776F;margin-top:4px">Maksimal 15 link per sesi</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
