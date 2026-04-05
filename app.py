@@ -34,24 +34,17 @@ st.markdown("""
     --accent2: #2A6AE8;
     --text:    #1A1916;
     --muted:   #7A776F;
+    --green:   #16A34A;
     --radius:  12px;
     --shadow:  0 2px 12px rgba(0,0,0,0.08);
 }
 
-/* ── Background utama ── */
+/* ── Background & font dasar ── */
 .stApp, [data-testid="stAppViewContainer"] { background: var(--bg) !important; }
-
-/* ── Font global (KECUALI elemen icon Streamlit) ── */
-p, div, label, input, textarea, button, select, h1, h2, h3, h4, h5, h6 {
+p, div, label, input, textarea, select, h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
+    color: var(--text);
 }
-
-/* ── Paksa teks gelap ── */
-body, .stApp,
-[data-testid="stAppViewContainer"],
-[data-testid="stMarkdownContainer"] p,
-[data-testid="stMarkdownContainer"] div,
-.stMarkdown p, .stMarkdown div { color: var(--text) !important; }
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
@@ -59,100 +52,56 @@ body, .stApp,
     border-right: 1px solid var(--border) !important;
 }
 [data-testid="stSidebar"] p,
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+[data-testid="stSidebar"] label {
     color: var(--text) !important;
 }
 
-/* ── Tombol collapse/expand sidebar ──
-   Hapus kotak/border, buat transparan, hanya tampilkan icon saja. ── */
+/* ── Tombol collapse sidebar – tampilkan dengan kotak ── */
 [data-testid="stSidebarCollapseButton"] span,
-[data-testid="stSidebarCollapseButton"] button span {
+[data-testid="stSidebarCollapseButton"] button span,
+[data-testid="collapsedControl"] span,
+[data-testid="collapsedControl"] button span {
     font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
 }
 [data-testid="stSidebarCollapseButton"] button {
-    background-color: transparent !important;
+    background-color: var(--text) !important;
+    border-radius: 6px !important;
     border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    color: var(--text) !important;
-    padding: 4px !important;
+    color: #ffffff !important;
+    padding: 4px 6px !important;
 }
 [data-testid="stSidebarCollapseButton"] button:hover {
-    background-color: var(--surface2) !important;
-    border-radius: 6px !important;
-}
-/* Tombol saat sidebar tertutup */
-[data-testid="collapsedControl"] span {
-    font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
+    background-color: var(--muted) !important;
 }
 [data-testid="collapsedControl"] button {
     background-color: var(--surface) !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
+    border: 1.5px solid var(--border) !important;
+    border-radius: 6px !important;
     color: var(--text) !important;
-    padding: 4px !important;
+    padding: 4px 6px !important;
 }
 [data-testid="collapsedControl"] button:hover {
     background-color: var(--surface2) !important;
-    border-radius: 6px !important;
 }
 
-/* ── LINK BUTTON "Buka Google Sheets" – hijau, teks PUTIH ── */
-[data-testid="stLinkButton"] a {
-    background-color: #16A34A !important;
-    color: #ffffff !important;
-    font-weight: 600 !important;
-    border-radius: 8px !important;
-    border: 2px solid #16A34A !important;
-    text-decoration: none !important;
-    transition: background-color .18s ease, color .18s ease !important;
-    display: block !important;
-}
-/* Paksa semua child elemen teks juga putih */
-[data-testid="stLinkButton"] a *,
-[data-testid="stLinkButton"] a p,
-[data-testid="stLinkButton"] a span,
-[data-testid="stLinkButton"] a div {
-    color: #ffffff !important;
-}
-/* Hover: bg putih, teks hijau */
-[data-testid="stLinkButton"] a:hover {
-    background-color: #ffffff !important;
-    color: #16A34A !important;
-    border-color: #16A34A !important;
-    filter: none !important;
-}
-[data-testid="stLinkButton"] a:hover *,
-[data-testid="stLinkButton"] a:hover p,
-[data-testid="stLinkButton"] a:hover span,
-[data-testid="stLinkButton"] a:hover div {
-    color: #16A34A !important;
-}
-[data-testid="stWidgetLabel"],
-[data-testid="stWidgetLabel"] * {
+/* ── Label widget ── */
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label {
     color: var(--text) !important;
     font-weight: 600 !important;
 }
 
-/* ── Caption / teks kecil ── */
-.stCaption, [data-testid="stCaptionContainer"],
-.stCaption *, [data-testid="stCaptionContainer"] * {
+/* ── Caption ── */
+.stCaption, [data-testid="stCaptionContainer"] {
     color: var(--muted) !important;
 }
 
-/* ── TOMBOL PRIMARY – teks putih ── */
+/* ── Tombol primary (Kirim, Simpan) ── */
 .stButton > button {
     color: #ffffff !important;
     font-weight: 600 !important;
     border-radius: 8px !important;
     transition: all .18s ease !important;
-}
-.stButton > button p,
-.stButton > button span,
-.stButton > button div {
-    color: #ffffff !important;
 }
 .stButton > button:hover {
     transform: translateY(-1px) !important;
@@ -160,23 +109,46 @@ body, .stApp,
     filter: brightness(1.08) !important;
 }
 
-/* ── TOMBOL SECONDARY (Hapus Semua) – teks gelap, bg terang ── */
+/* ── Tombol secondary (Hapus Semua) ── */
 .stButton > button[kind="secondary"] {
     color: var(--text) !important;
     background-color: var(--surface2) !important;
     border: 1.5px solid var(--border) !important;
-}
-.stButton > button[kind="secondary"] p,
-.stButton > button[kind="secondary"] span,
-.stButton > button[kind="secondary"] div {
-    color: var(--text) !important;
 }
 .stButton > button[kind="secondary"]:hover {
     background-color: var(--border) !important;
     filter: none !important;
 }
 
-/* ── SELECT BOX – bg putih, teks gelap ── */
+/* ── LINK BUTTON "Buka Google Sheets" ──
+   Pendekatan: styling pada elemen <a> langsung tanpa menyentuh child,
+   lalu gunakan CSS inheritance — child akan inherit color dari parent <a>.
+   KUNCI: jangan ada rule lain yang override color pada child elemen ini. ── */
+[data-testid="stLinkButton"] a {
+    background-color: var(--green) !important;
+    border: 2px solid var(--green) !important;
+    border-radius: 8px !important;
+    text-decoration: none !important;
+    transition: background-color .18s, border-color .18s !important;
+    display: block !important;
+    /* Set color di sini — child akan inherit jika tidak ada override lain */
+    color: #ffffff !important;
+}
+/* Paksa inheritance turun ke semua child — ini HARUS setelah rule di atas */
+[data-testid="stLinkButton"] a > *,
+[data-testid="stLinkButton"] a > * > *,
+[data-testid="stLinkButton"] a > * > * > * {
+    color: inherit !important;
+    background: transparent !important;
+}
+/* Hover state */
+[data-testid="stLinkButton"] a:hover {
+    background-color: #ffffff !important;
+    border-color: var(--green) !important;
+    color: var(--green) !important;
+}
+
+/* ── Select box ── */
 [data-baseweb="select"] > div {
     background-color: var(--surface) !important;
     border: 1.5px solid var(--border) !important;
@@ -184,12 +156,10 @@ body, .stApp,
 }
 [data-baseweb="select"] span,
 [data-baseweb="select"] div,
-[data-baseweb="select"] p,
-[data-baseweb="select"] [data-testid="stMarkdownContainer"] {
+[data-baseweb="select"] p {
     color: var(--text) !important;
     background-color: transparent !important;
 }
-/* Dropdown list options */
 [data-baseweb="popover"] [role="option"],
 [data-baseweb="popover"] [role="option"] * {
     color: var(--text) !important;
@@ -199,14 +169,13 @@ body, .stApp,
 [data-baseweb="popover"] [role="option"]:hover * {
     background-color: var(--surface2) !important;
 }
-/* Selected item highlight */
 [data-baseweb="popover"] [aria-selected="true"],
 [data-baseweb="popover"] [aria-selected="true"] * {
     background-color: #DBEAFE !important;
     color: #1D4ED8 !important;
 }
 
-/* ── TEXT AREA & TEXT INPUT ── */
+/* ── Text area & text input ── */
 .stTextArea textarea,
 .stTextInput input {
     background: var(--surface) !important;
@@ -222,7 +191,7 @@ body, .stApp,
     box-shadow: 0 0 0 3px rgba(42,106,232,.12) !important;
 }
 
-/* ── DATE INPUT ── */
+/* ── Date input ── */
 .stDateInput > div > div,
 .stDateInput input {
     background: var(--surface) !important;
@@ -231,10 +200,10 @@ body, .stApp,
     border-radius: 8px !important;
 }
 
-/* ── DIVIDER ── */
+/* ── Divider ── */
 hr { border-color: var(--border) !important; }
 
-/* ── KARTU PREVIEW VIDEO ── */
+/* ── Kartu preview video ── */
 .yt-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -260,21 +229,21 @@ hr { border-color: var(--border) !important; }
 .badge-short { background: #FEE2E2; color: #B91C1C !important; }
 .badge-vod   { background: #DBEAFE; color: #1D4ED8 !important; }
 
-/* ── KOTAK PERINGATAN LINK TIDAK VALID ── */
+/* ── Kotak peringatan ── */
 .warn-box {
     background: #FEF9EC; border: 1.5px solid #F59E0B;
     border-radius: 8px; padding: 10px 14px;
-    font-size: 13px; color: #92400E !important; margin-bottom: 8px;
+    font-size: 13px; margin-bottom: 8px;
 }
-.warn-box * { color: #92400E !important; }
+.warn-box, .warn-box * { color: #92400E !important; }
 
-/* ── PAGE HEADER ── */
+/* ── Page header ── */
 .page-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
 .page-header-icon { font-size: 36px; line-height: 1; }
 .page-header-title { font-size: 26px; font-weight: 700; color: var(--text) !important; margin:0; }
 .page-header-sub   { font-size: 13px; color: var(--muted) !important; margin:0; }
 
-/* ── LABEL SECTION ── */
+/* ── Label section ── */
 .section-label {
     font-size: 11px; font-weight: 700; letter-spacing: .08em;
     text-transform: uppercase; color: var(--muted) !important; margin-bottom: 8px;
