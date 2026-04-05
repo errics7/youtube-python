@@ -45,34 +45,46 @@ st.markdown("""
 * { font-family: 'Plus Jakarta Sans', sans-serif !important; }
 
 /* ── Paksa SEMUA teks menjadi gelap
-   (mencegah teks menyatu background gelap default Streamlit) ── */
+   (mencegah teks menyatu background gelap default Streamlit)
+   CATATAN: Tidak menyertakan 'span' di sini karena Streamlit memakai <span>
+   untuk icon font Material Symbols — override font-family/color di span
+   akan membuat icon tampil sebagai nama teks mentah. ── */
 body, .stApp,
 [data-testid="stAppViewContainer"],
-[data-testid="stMarkdownContainer"],
-[data-testid="stMarkdownContainer"] *,
-.stMarkdown, .stMarkdown * { color: var(--text) !important; }
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] div,
+.stMarkdown p, .stMarkdown div { color: var(--text) !important; }
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
     background: var(--surface) !important;
     border-right: 1px solid var(--border) !important;
 }
+/* Hanya p dan label — JANGAN override span/div di sidebar karena
+   icon font Material Symbols berada di <span> dan akan tampil sebagai
+   teks mentah ("keyboard_double_arrow_right") jika font-family di-reset */
 [data-testid="stSidebar"] p,
-[data-testid="stSidebar"] span,
 [data-testid="stSidebar"] label,
-[data-testid="stSidebar"] div {
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
     color: var(--text) !important;
 }
 
-/* ── Tombol collapse/expand sidebar (panah << >>) harus terlihat ── */
+/* ── Tombol collapse/expand sidebar ──
+   Streamlit memakai Material Symbols icon font di dalam <span>.
+   Override font-family di span akan membuat icon tampil sebagai nama teks.
+   Solusi: biarkan font-family icon tetap apa adanya, hanya atur visibility. ── */
 [data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="stSidebarCollapseButton"] button {
+    opacity: 1 !important;
+    visibility: visible !important;
+    background: transparent !important;
+}
 [data-testid="collapsedControl"],
-[data-testid="collapsedControl"] svg {
-    color: var(--text) !important;
+[data-testid="collapsedControl"] button {
     opacity: 1 !important;
     visibility: visible !important;
     background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
 }
 
 /* ── Label widget ── */
@@ -127,15 +139,25 @@ body, .stApp,
     color: #ffffff !important;
     font-weight: 600 !important;
     border-radius: 8px !important;
+    text-decoration: none !important;
 }
 [data-testid="stLinkButton"] a *,
 [data-testid="stLinkButton"] a p,
 [data-testid="stLinkButton"] a span {
     color: #ffffff !important;
+    background: transparent !important;
 }
+/* Hover: gelap sedikit, JANGAN ubah background ke putih */
 [data-testid="stLinkButton"] a:hover {
-    filter: brightness(1.1) !important;
+    filter: brightness(0.88) !important;
     transform: translateY(-1px) !important;
+    background: inherit !important;
+}
+[data-testid="stLinkButton"] a:hover *,
+[data-testid="stLinkButton"] a:hover p,
+[data-testid="stLinkButton"] a:hover span {
+    color: #ffffff !important;
+    background: transparent !important;
 }
 
 /* ── SELECT BOX – bg putih, teks gelap ── */
