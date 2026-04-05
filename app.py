@@ -41,14 +41,12 @@ st.markdown("""
 /* ── Background utama ── */
 .stApp, [data-testid="stAppViewContainer"] { background: var(--bg) !important; }
 
-/* ── Font global ── */
-* { font-family: 'Plus Jakarta Sans', sans-serif !important; }
+/* ── Font global (KECUALI elemen icon Streamlit) ── */
+p, div, label, input, textarea, button, select, h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
 
-/* ── Paksa SEMUA teks menjadi gelap
-   (mencegah teks menyatu background gelap default Streamlit)
-   CATATAN: Tidak menyertakan 'span' di sini karena Streamlit memakai <span>
-   untuk icon font Material Symbols — override font-family/color di span
-   akan membuat icon tampil sebagai nama teks mentah. ── */
+/* ── Paksa teks gelap ── */
 body, .stApp,
 [data-testid="stAppViewContainer"],
 [data-testid="stMarkdownContainer"] p,
@@ -60,31 +58,16 @@ body, .stApp,
     background: var(--surface) !important;
     border-right: 1px solid var(--border) !important;
 }
-/* Hanya p dan label — JANGAN override span/div di sidebar karena
-   icon font Material Symbols berada di <span> dan akan tampil sebagai
-   teks mentah ("keyboard_double_arrow_right") jika font-family di-reset */
 [data-testid="stSidebar"] p,
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
     color: var(--text) !important;
 }
 
-/* ── Tombol collapse/expand sidebar ──
-   Streamlit memakai Material Symbols icon font di dalam <span>.
-   Override font-family di span akan membuat icon tampil sebagai nama teks.
-   Solusi: biarkan font-family icon tetap apa adanya, hanya atur visibility. ── */
+/* ── SEMBUNYIKAN tombol collapse bawaan Streamlit (yang menampilkan teks icon) ── */
 [data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebarCollapseButton"] button {
-    opacity: 1 !important;
-    visibility: visible !important;
-    background: transparent !important;
-}
-[data-testid="collapsedControl"],
-[data-testid="collapsedControl"] button {
-    opacity: 1 !important;
-    visibility: visible !important;
-    background: var(--surface) !important;
-    border: 1px solid var(--border) !important;
+[data-testid="collapsedControl"] {
+    display: none !important;
 }
 
 /* ── Label widget ── */
@@ -134,29 +117,37 @@ body, .stApp,
     filter: none !important;
 }
 
-/* ── Link button (Buka Google Sheets) ── */
+/* ── LINK BUTTON "Buka Google Sheets" – hijau ── */
 [data-testid="stLinkButton"] a {
+    background-color: #16A34A !important;
     color: #ffffff !important;
     font-weight: 600 !important;
     border-radius: 8px !important;
+    border: 2px solid #16A34A !important;
     text-decoration: none !important;
+    transition: all .18s ease !important;
 }
-[data-testid="stLinkButton"] a *,
 [data-testid="stLinkButton"] a p,
-[data-testid="stLinkButton"] a span {
+[data-testid="stLinkButton"] a span,
+[data-testid="stLinkButton"] a div,
+[data-testid="stLinkButton"] a * {
     color: #ffffff !important;
     background: transparent !important;
 }
-/* Hover: gelap sedikit, JANGAN ubah background ke putih */
+/* Hover: bg putih, teks hijau */
 [data-testid="stLinkButton"] a:hover {
-    filter: brightness(0.88) !important;
+    background-color: #ffffff !important;
+    color: #16A34A !important;
+    border-color: #16A34A !important;
     transform: translateY(-1px) !important;
-    background: inherit !important;
+    box-shadow: 0 4px 12px rgba(22,163,74,.2) !important;
+    filter: none !important;
 }
-[data-testid="stLinkButton"] a:hover *,
 [data-testid="stLinkButton"] a:hover p,
-[data-testid="stLinkButton"] a:hover span {
-    color: #ffffff !important;
+[data-testid="stLinkButton"] a:hover span,
+[data-testid="stLinkButton"] a:hover div,
+[data-testid="stLinkButton"] a:hover * {
+    color: #16A34A !important;
     background: transparent !important;
 }
 
@@ -371,7 +362,28 @@ with st.sidebar:
         label_visibility="collapsed"
     )
     st.markdown("---")
-    st.link_button("📊 Buka Google Sheets", SHEETS_URL, use_container_width=True)
+    # Tombol Buka Google Sheets pakai HTML agar warna bisa dikontrol penuh
+    st.markdown(f"""
+    <a href="{SHEETS_URL}" target="_blank" style="
+        display: block;
+        width: 100%;
+        padding: 10px 16px;
+        background-color: #16A34A;
+        color: #ffffff !important;
+        font-weight: 600;
+        font-size: 14px;
+        border-radius: 8px;
+        text-align: center;
+        text-decoration: none;
+        border: 2px solid #16A34A;
+        box-sizing: border-box;
+        transition: all .18s ease;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    "
+    onmouseover="this.style.backgroundColor='#ffffff';this.style.color='#16A34A';"
+    onmouseout="this.style.backgroundColor='#16A34A';this.style.color='#ffffff';"
+    >📊 Buka Google Sheets</a>
+    """, unsafe_allow_html=True)
     st.caption(f"Max {MAX_LINKS} link per sesi")
 
 
