@@ -367,6 +367,14 @@ if "clear_trigger" not in st.session_state:
 # ─────────────────────────────────────────────
 # NAVBAR
 # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# NAVIGASI via URL query parameter
+# Saat user klik tombol navbar, URL berubah → Streamlit rerun → halaman berganti
+# ─────────────────────────────────────────────
+params = st.query_params
+if "page" in params:
+    st.session_state.page = params["page"]
+
 active_input = "active" if st.session_state.page == "input" else ""
 active_leave = "active" if st.session_state.page == "leave" else ""
 
@@ -374,20 +382,8 @@ st.markdown(f"""
 <div class="navbar">
     <span class="navbar-brand">🎬 YT Sheet Tracker</span>
     <div class="navbar-links">
-        <form method="get" style="display:inline">
-            <button class="navbar-link {active_input}"
-                onclick="window.location.hash='input'; return false;"
-                id="btn-input">
-                📥 Input Video YouTube
-            </button>
-        </form>
-        <form method="get" style="display:inline">
-            <button class="navbar-link {active_leave}"
-                onclick="window.location.hash='leave'; return false;"
-                id="btn-leave">
-                🗓️ Libur & Cuti
-            </button>
-        </form>
+        <a class="navbar-link {active_input}" href="?page=input">📥 Input Video YouTube</a>
+        <a class="navbar-link {active_leave}" href="?page=leave">🗓️ Libur &amp; Cuti</a>
     </div>
     <div class="navbar-right">
         <a href="{SHEETS_URL}" target="_blank" class="navbar-sheets-btn">
@@ -396,23 +392,6 @@ st.markdown(f"""
     </div>
 </div>
 """, unsafe_allow_html=True)
-
-# Tombol navigasi pakai st.button agar bisa trigger rerun
-col_nav1, col_nav2, col_spacer = st.columns([1, 1, 6])
-with col_nav1:
-    if st.button("📥 Input Video YouTube",
-                 type="primary" if st.session_state.page == "input" else "secondary",
-                 use_container_width=True,
-                 key="nav_input"):
-        st.session_state.page = "input"
-        st.rerun()
-with col_nav2:
-    if st.button("🗓️ Libur & Cuti",
-                 type="primary" if st.session_state.page == "leave" else "secondary",
-                 use_container_width=True,
-                 key="nav_leave"):
-        st.session_state.page = "leave"
-        st.rerun()
 
 st.markdown("---")
 
