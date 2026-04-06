@@ -1,653 +1,658 @@
+"""
+YT Sheet Tracker — Dibangun ulang dari nol.
+Arsitektur: state-driven, modular, validasi ketat sebelum submit.
+"""
+
+import re
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from datetime import datetime
-import re
 from urllib.parse import urlparse, parse_qs
 
-# ─────────────────────────────────────────────
-# KONFIGURASI HALAMAN
-# ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+# KONFIGURASI HALAMAN (harus baris pertama Streamlit)
+# ══════════════════════════════════════════════════════════════════════
 st.set_page_config(
     page_title="YT Sheet Tracker",
     page_icon="🎬",
     layout="wide",
 )
 
-# ─────────────────────────────────────────────
-# STYLING
-# Catatan: Streamlit merender dalam tema gelap secara default.
-# Kita paksa tema terang penuh lewat CSS agar semua elemen terbaca.
-# ─────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-
-/* ── Variabel warna tema ── */
-:root {
-    --bg:      #F5F4F0;
-    --surface: #FFFFFF;
-    --surface2:#EEECEA;
-    --border:  #D8D5CF;
-    --accent:  #E8472A;
-    --accent2: #2A6AE8;
-    --text:    #1A1916;
-    --muted:   #7A776F;
-    --radius:  12px;
-    --shadow:  0 2px 12px rgba(0,0,0,0.08);
-}
-
-/* ── Background utama ── */
-.stApp, [data-testid="stAppViewContainer"] { background: var(--bg) !important; }
-
-/* ── Font global (KECUALI elemen icon Streamlit) ── */
-p, div, label, input, textarea, button, select, h1, h2, h3, h4, h5, h6 {
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-}
-
-/* ── Paksa teks gelap ── */
-body, .stApp,
-[data-testid="stAppViewContainer"],
-[data-testid="stMarkdownContainer"] p,
-[data-testid="stMarkdownContainer"] div,
-.stMarkdown p, .stMarkdown div { color: var(--text) !important; }
-
-/* ── Sidebar ── */
-[data-testid="stSidebar"] {
-    background: var(--surface) !important;
-    border-right: 1px solid var(--border) !important;
-}
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-    color: var(--text) !important;
-}
-
-/* ── Tombol collapse/expand sidebar ──
-   Streamlit menggunakan Material Symbols font untuk icon di <span>.
-   font-family di global CSS (*) menyebabkan font icon tidak load → teks mentah muncul.
-   Solusi: kembalikan font-family khusus untuk elemen tombol collapse. ── */
-[data-testid="stSidebarCollapseButton"] span,
-[data-testid="stSidebarCollapseButton"] button span {
-    font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
-}
-[data-testid="stSidebarCollapseButton"] button {
-    background-color: var(--text) !important;
-    border-radius: 6px !important;
-    color: #ffffff !important;
-}
-[data-testid="stSidebarCollapseButton"] button:hover {
-    background-color: var(--muted) !important;
-}
-/* Tombol saat sidebar tertutup (collapsedControl) */
-[data-testid="collapsedControl"] span {
-    font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
-}
-[data-testid="collapsedControl"] button {
-    background-color: var(--surface) !important;
-    border: 1.5px solid var(--border) !important;
-    border-radius: 6px !important;
-    color: var(--text) !important;
-}
-[data-testid="collapsedControl"] button:hover {
-    background-color: var(--surface2) !important;
-}
-
-/* ── LINK BUTTON "Buka Google Sheets" – hijau dengan hover putih ── */
-[data-testid="stLinkButton"] a {
-    background-color: #16A34A !important;
-    color: #ffffff !important;
-    font-weight: 600 !important;
-    border-radius: 8px !important;
-    border: 2px solid #16A34A !important;
-    text-decoration: none !important;
-    transition: background-color .18s ease, color .18s ease !important;
-    display: block !important;
-}
-[data-testid="stLinkButton"] a:hover {
-    background-color: #ffffff !important;
-    color: #16A34A !important;
-    border-color: #16A34A !important;
-    filter: none !important;
-}
-/* Override teks child elements agar ikut berubah saat hover */
-[data-testid="stLinkButton"] a p { color: #ffffff !important; }
-[data-testid="stLinkButton"]:has(a:hover) p { color: #16A34A !important; }
-[data-testid="stWidgetLabel"],
-[data-testid="stWidgetLabel"] * {
-    color: var(--text) !important;
-    font-weight: 600 !important;
-}
-
-/* ── Caption / teks kecil ── */
-.stCaption, [data-testid="stCaptionContainer"],
-.stCaption *, [data-testid="stCaptionContainer"] * {
-    color: var(--muted) !important;
-}
-
-/* ── TOMBOL PRIMARY – teks putih ── */
-.stButton > button {
-    color: #ffffff !important;
-    font-weight: 600 !important;
-    border-radius: 8px !important;
-    transition: all .18s ease !important;
-}
-.stButton > button p,
-.stButton > button span,
-.stButton > button div {
-    color: #ffffff !important;
-}
-.stButton > button:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,.25) !important;
-    filter: brightness(1.08) !important;
-}
-
-/* ── TOMBOL SECONDARY (Hapus Semua) – teks gelap, bg terang ── */
-.stButton > button[kind="secondary"] {
-    color: var(--text) !important;
-    background-color: var(--surface2) !important;
-    border: 1.5px solid var(--border) !important;
-}
-.stButton > button[kind="secondary"] p,
-.stButton > button[kind="secondary"] span,
-.stButton > button[kind="secondary"] div {
-    color: var(--text) !important;
-}
-.stButton > button[kind="secondary"]:hover {
-    background-color: var(--border) !important;
-    filter: none !important;
-}
-
-/* ── SELECT BOX – bg putih, teks gelap ── */
-[data-baseweb="select"] > div {
-    background-color: var(--surface) !important;
-    border: 1.5px solid var(--border) !important;
-    border-radius: 8px !important;
-}
-[data-baseweb="select"] span,
-[data-baseweb="select"] div,
-[data-baseweb="select"] p,
-[data-baseweb="select"] [data-testid="stMarkdownContainer"] {
-    color: var(--text) !important;
-    background-color: transparent !important;
-}
-/* Dropdown list options */
-[data-baseweb="popover"] [role="option"],
-[data-baseweb="popover"] [role="option"] * {
-    color: var(--text) !important;
-    background-color: var(--surface) !important;
-}
-[data-baseweb="popover"] [role="option"]:hover,
-[data-baseweb="popover"] [role="option"]:hover * {
-    background-color: var(--surface2) !important;
-}
-/* Selected item highlight */
-[data-baseweb="popover"] [aria-selected="true"],
-[data-baseweb="popover"] [aria-selected="true"] * {
-    background-color: #DBEAFE !important;
-    color: #1D4ED8 !important;
-}
-
-/* ── TEXT AREA & TEXT INPUT ── */
-.stTextArea textarea,
-.stTextInput input {
-    background: var(--surface) !important;
-    color: var(--text) !important;
-    border: 1.5px solid var(--border) !important;
-    border-radius: 8px !important;
-    font-family: 'DM Mono', monospace !important;
-    font-size: 13px !important;
-}
-.stTextArea textarea:focus,
-.stTextInput input:focus {
-    border-color: var(--accent2) !important;
-    box-shadow: 0 0 0 3px rgba(42,106,232,.12) !important;
-}
-
-/* ── DATE INPUT ── */
-.stDateInput > div > div,
-.stDateInput input {
-    background: var(--surface) !important;
-    color: var(--text) !important;
-    border: 1.5px solid var(--border) !important;
-    border-radius: 8px !important;
-}
-
-/* ── DIVIDER ── */
-hr { border-color: var(--border) !important; }
-
-/* ── KARTU PREVIEW VIDEO ── */
-.yt-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    margin-bottom: 8px;
-    box-shadow: var(--shadow);
-    transition: box-shadow .18s;
-}
-.yt-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.12); }
-.yt-card-num {
-    font-size: 10px; font-weight: 700;
-    letter-spacing: .06em; text-transform: uppercase;
-    color: var(--accent) !important;
-    font-family: 'DM Mono', monospace;
-}
-.yt-card-title { font-weight: 600; font-size: 14px; color: var(--text) !important; margin: 4px 0; }
-.yt-card-meta  { font-size: 12px; color: var(--muted) !important; font-family: 'DM Mono', monospace; }
-.yt-card-type  {
-    display: inline-block; font-size: 10px; font-weight: 700;
-    letter-spacing: .05em; padding: 2px 8px; border-radius: 20px; margin-top: 4px;
-}
-.badge-short { background: #FEE2E2; color: #B91C1C !important; }
-.badge-vod   { background: #DBEAFE; color: #1D4ED8 !important; }
-
-/* ── KOTAK PERINGATAN LINK TIDAK VALID ── */
-.warn-box {
-    background: #FEF9EC; border: 1.5px solid #F59E0B;
-    border-radius: 8px; padding: 10px 14px;
-    font-size: 13px; color: #92400E !important; margin-bottom: 8px;
-}
-.warn-box * { color: #92400E !important; }
-
-/* ── PAGE HEADER ── */
-.page-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
-.page-header-icon { font-size: 36px; line-height: 1; }
-.page-header-title { font-size: 26px; font-weight: 700; color: var(--text) !important; margin:0; }
-.page-header-sub   { font-size: 13px; color: var(--muted) !important; margin:0; }
-
-/* ── LABEL SECTION ── */
-.section-label {
-    font-size: 11px; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--muted) !important; margin-bottom: 8px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
 # KONSTANTA
-# ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
 SPREADSHEET_ID = "1BrvBpYU7yr1Vcvoeqae70B1Nywsv5wGM8ZLF6hDQgGA"
 SHEETS_URL     = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}"
 MAX_LINKS      = 15
+SHEET_HEADERS  = ["Tanggal", "Editor", "Judul", "Link", "Views", "Keterangan"]
+LEAVE_OPTIONS  = ["Libur", "Cuti", "Izin", "Sakit", "Lainnya"]
+EDITOR_LIST    = ["Erricson Bernedy S"]
+
+# Halaman navigasi
+PAGE_VIDEO = "input_video"
+PAGE_LEAVE = "libur_cuti"
+
+# ══════════════════════════════════════════════════════════════════════
+# SESSION STATE — inisialisasi semua state di satu tempat
+# ══════════════════════════════════════════════════════════════════════
+_defaults = {
+    "page":          PAGE_VIDEO,   # halaman aktif
+    "clear_trigger": 0,            # ubah key textbox agar benar-benar reset
+    "links_raw":     "",           # isi textbox terakhir yang di-sync
+    "fetch_results": [],           # list hasil fetch: {url, vid_id, status, data/error}
+    "submit_result": None,         # hasil submit terakhir: {success:[], failed:[]}
+}
+for k, v in _defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
 
-# ─────────────────────────────────────────────
-# INISIALISASI GOOGLE API
-# @st.cache_resource = hanya berjalan sekali, tidak reconnect tiap interaksi
-# ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════
+# GOOGLE API — cache agar tidak reconnect tiap render
+# ══════════════════════════════════════════════════════════════════════
 @st.cache_resource
 def init_google_clients():
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
+        "https://www.googleapis.com/auth/drive",
     ]
     creds       = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"], scopes=scope
     )
     gc          = gspread.authorize(creds)
     spreadsheet = gc.open_by_key(SPREADSHEET_ID)
-    youtube     = build("youtube", "v3", developerKey=st.secrets["YOUTUBE_API_KEY"])
-    return spreadsheet, youtube
-
-spreadsheet, youtube = init_google_clients()
+    yt          = build("youtube", "v3", developerKey=st.secrets["YOUTUBE_API_KEY"])
+    return spreadsheet, yt
 
 
-# ─────────────────────────────────────────────
-# FUNGSI UTILITAS
-# ─────────────────────────────────────────────
-def get_video_id(url: str):
-    """Ekstrak video ID dari berbagai format URL YouTube."""
-    shorts_match = re.search(r'shorts/([a-zA-Z0-9_-]{11})', url)
-    if shorts_match:
-        return shorts_match.group(1)
+try:
+    spreadsheet, youtube = init_google_clients()
+    _clients_ok = True
+except Exception as _e:
+    _clients_ok = False
+    _clients_err = str(_e)
 
-    yt_match = re.search(r'(?:v=|youtu\.be/|embed/|watch\?v=)([^&"?\s]{11})', url)
-    if yt_match:
-        return yt_match.group(1)
 
+# ══════════════════════════════════════════════════════════════════════
+# UTILITAS MURNI (tidak menyentuh session_state)
+# ══════════════════════════════════════════════════════════════════════
+
+def extract_video_id(url: str) -> str | None:
+    """
+    Ekstrak video ID dari berbagai format URL YouTube.
+    Kembalikan None jika bukan URL YouTube valid.
+    """
+    url = url.strip()
+    if not url:
+        return None
+
+    # Shorts: youtube.com/shorts/<id>
+    m = re.search(r'shorts/([a-zA-Z0-9_-]{11})', url)
+    if m:
+        return m.group(1)
+
+    # youtu.be/<id>
+    m = re.search(r'youtu\.be/([a-zA-Z0-9_-]{11})', url)
+    if m:
+        return m.group(1)
+
+    # youtube.com/watch?v=<id>  atau  /embed/<id>
+    m = re.search(r'(?:v=|embed/)([a-zA-Z0-9_-]{11})', url)
+    if m:
+        return m.group(1)
+
+    # Parsing fallback
     parsed = urlparse(url)
-    if parsed.hostname in ('www.youtube.com', 'youtube.com', 'm.youtube.com'):
-        if 'v' in parse_qs(parsed.query):
-            return parse_qs(parsed.query)['v'][0]
-    elif parsed.hostname == 'youtu.be':
-        return parsed.path[1:]
+    host = (parsed.hostname or "").lower()
+    if host in ("www.youtube.com", "youtube.com", "m.youtube.com"):
+        qs = parse_qs(parsed.query)
+        if "v" in qs:
+            return qs["v"][0]
 
     return None
 
 
-def format_date(published: str) -> str:
-    """Format ISO datetime ke DD-MM-YYYY."""
-    try:
-        return datetime.strptime(published, "%Y-%m-%dT%H:%M:%SZ").strftime("%d-%m-%Y")
-    except Exception:
-        return published
+def is_youtube_url(url: str) -> bool:
+    return extract_video_id(url) is not None
+
+
+def parse_publish_date(iso_str: str) -> datetime | None:
+    """Parse tanggal ISO dari YouTube API."""
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S%z"):
+        try:
+            return datetime.strptime(iso_str, fmt)
+        except ValueError:
+            pass
+    return None
+
+
+def date_to_sheets_serial(dt: datetime) -> int:
+    """
+    Konversi datetime ke serial number Google Sheets (Lotus 1-2-3 epoch).
+    Ini memastikan kolom Tanggal dibaca sebagai DATE oleh Sheets (=ISDATE() → TRUE).
+    Epoch Sheets: 30 Desember 1899.
+    """
+    epoch = datetime(1899, 12, 30)
+    delta = dt.replace(tzinfo=None) - epoch
+    return delta.days
 
 
 def extract_editor(description: str) -> str:
-    """Ambil nama editor dari baris 'Editor Video:' di deskripsi video."""
-    for line in description.split("\n"):
-        if "editor video" in line.lower():
+    """Ambil nama editor dari baris 'Editor Video: ...' di deskripsi."""
+    for line in description.splitlines():
+        if re.search(r'editor\s+video\s*:', line, re.IGNORECASE):
             parts = line.split(":", 1)
             if len(parts) > 1:
-                return parts[1].strip()
-    return "Tidak tercantum"
+                name = parts[1].strip()
+                if name:
+                    return name
+    return "Tidak Diketahui"
+
+
+def build_keterangan(title: str) -> str:
+    """Isi Keterangan berdasarkan judul video."""
+    if "#SAKSIKATA" in title:
+        return "Saksi Kata"
+    return ""
 
 
 def get_or_create_worksheet(name: str, headers: list):
     """Ambil worksheet; buat baru dengan header jika belum ada."""
     try:
         return spreadsheet.worksheet(name)
-    except Exception:
-        ws = spreadsheet.add_worksheet(name, 1000, 10)
-        ws.append_row(headers)
+    except gspread.WorksheetNotFound:
+        ws = spreadsheet.add_worksheet(name, rows=1000, cols=len(headers))
+        ws.append_row(headers, value_input_option="USER_ENTERED")
         return ws
 
 
-# ─────────────────────────────────────────────
-# SESSION STATE – inisialisasi variabel persisten
-# ─────────────────────────────────────────────
-if "links_text"    not in st.session_state:
-    st.session_state.links_text    = ""
-if "preview_data"  not in st.session_state:
-    st.session_state.preview_data  = []
-# clear_trigger: setiap increment mengubah key textbox → widget di-reset sempurna
-if "clear_trigger" not in st.session_state:
-    st.session_state.clear_trigger = 0
+# ══════════════════════════════════════════════════════════════════════
+# LOGIKA FETCH & SUBMIT
+# ══════════════════════════════════════════════════════════════════════
+
+def fetch_videos(urls: list[str]) -> list[dict]:
+    """
+    Fetch data video dari YouTube API untuk daftar URL.
+    Return list of dicts:
+      {url, vid_id, status: "ok"|"error", data: {...} | error: str}
+    """
+    # Mapping vid_id → url (deduplicate berdasarkan vid_id)
+    id_to_url: dict[str, str] = {}
+    invalid:   list[dict]     = []
+
+    for url in urls:
+        vid_id = extract_video_id(url)
+        if vid_id:
+            # Simpan URL pertama yang ditemukan untuk setiap vid_id
+            if vid_id not in id_to_url:
+                id_to_url[vid_id] = url
+        else:
+            invalid.append({"url": url, "vid_id": None, "status": "error",
+                            "error": "Bukan URL YouTube yang valid"})
+
+    results: list[dict] = list(invalid)
+
+    if id_to_url:
+        try:
+            resp = youtube.videos().list(
+                part="snippet,statistics",
+                id=",".join(id_to_url.keys())
+            ).execute()
+        except Exception as e:
+            # Semua gagal sekaligus
+            for vid_id, url in id_to_url.items():
+                results.append({"url": url, "vid_id": vid_id, "status": "error",
+                                "error": f"YouTube API error: {e}"})
+            return results
+
+        returned_ids = {item["id"] for item in resp.get("items", [])}
+
+        # Video yang tidak dikembalikan API = tidak ditemukan
+        for vid_id, url in id_to_url.items():
+            if vid_id not in returned_ids:
+                results.append({"url": url, "vid_id": vid_id, "status": "error",
+                                "error": "Video tidak ditemukan (mungkin private/dihapus)"})
+
+        for item in resp.get("items", []):
+            vid_id  = item["id"]
+            url     = id_to_url[vid_id]
+            snippet = item.get("snippet", {})
+            stats   = item.get("statistics", {})
+            results.append({
+                "url":    url,
+                "vid_id": vid_id,
+                "status": "ok",
+                "data": {
+                    "title":       snippet.get("title", ""),
+                    "description": snippet.get("description", ""),
+                    "published":   snippet.get("publishedAt", ""),
+                    "views":       int(stats.get("viewCount", 0)),
+                },
+            })
+
+    return results
 
 
-# ─────────────────────────────────────────────
-# SIDEBAR – NAVIGASI
-# ─────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## 🎬 YT Sheet Tracker")
-    st.markdown("---")
-    page = st.radio(
-        "Menu",
-        ["📥  Input Video YouTube", "🗓️  Libur & Cuti"],
-        label_visibility="collapsed"
-    )
-    st.markdown("---")
-    st.link_button("📊 Buka Google Sheets", SHEETS_URL, use_container_width=True)
-    st.caption(f"Max {MAX_LINKS} link per sesi")
+def process_and_submit(fetch_results: list[dict]) -> dict:
+    """
+    Proses data valid, kirim ke Google Sheets.
+    Return: {success: [title, ...], failed: [{url, reason}, ...]}
+    """
+    ws_vod   = get_or_create_worksheet("VOD",   SHEET_HEADERS)
+    ws_short = get_or_create_worksheet("SHORT", SHEET_HEADERS)
+
+    success_list = []
+    failed_list  = []
+
+    for item in fetch_results:
+        if item["status"] != "ok":
+            failed_list.append({"url": item["url"], "reason": item["error"]})
+            continue
+
+        try:
+            d          = item["data"]
+            title      = d["title"]
+            desc       = d["description"]
+            pub_iso    = d["published"]
+            views      = d["views"]
+            url        = item["url"]
+
+            editor      = extract_editor(desc)
+            keterangan  = build_keterangan(title)
+
+            dt = parse_publish_date(pub_iso)
+            if dt is None:
+                raise ValueError(f"Gagal parsing tanggal: {pub_iso!r}")
+
+            tanggal_serial = date_to_sheets_serial(dt)
+
+            row = [tanggal_serial, editor, title, url, views, keterangan]
+
+            ws = ws_short if "/shorts/" in url else ws_vod
+            ws.append_row(row, value_input_option="USER_ENTERED")
+
+            success_list.append(title)
+
+        except Exception as e:
+            failed_list.append({"url": item["url"], "reason": str(e)})
+
+    return {"success": success_list, "failed": failed_list}
 
 
-# ═══════════════════════════════════════════════════════════════════
-# HALAMAN 1 – INPUT VIDEO YOUTUBE
-# ═══════════════════════════════════════════════════════════════════
-if "📥" in page:
+# ══════════════════════════════════════════════════════════════════════
+# STYLING — dark-mode friendly, minimal override
+# ══════════════════════════════════════════════════════════════════════
+st.markdown("""
+<style>
+/* ── Sembunyikan sidebar bawaan ── */
+[data-testid="stSidebar"],
+[data-testid="stSidebarCollapseButton"],
+[data-testid="collapsedControl"] { display: none !important; }
 
-    st.markdown("""
-    <div class="page-header">
-        <div class="page-header-icon">📥</div>
-        <div>
-            <div class="page-header-title">Input Video YouTube</div>
-            <div class="page-header-sub">Rekam data video ke Google Sheets secara otomatis</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+/* ── Hapus padding atas default Streamlit ── */
+[data-testid="stAppViewContainer"] > .main > .block-container {
+    padding-top: 0 !important;
+}
 
-    st.markdown('<div class="section-label">Masukkan Link YouTube</div>', unsafe_allow_html=True)
+/* ── Navbar ── */
+.yt-navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #1E1E1E;
+    border-bottom: 1px solid #333;
+    padding: 0 24px;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    margin-bottom: 28px;
+    box-shadow: 0 1px 8px rgba(0,0,0,.4);
+}
+.yt-navbar-brand {
+    font-weight: 700;
+    font-size: 15px;
+    color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.yt-navbar-links { display: flex; gap: 4px; }
+.yt-navbar-right { display: flex; align-items: center; gap: 8px; }
 
-    # ── TEXTBOX INPUT ──────────────────────────────────────────────
-    # Teknik reset yang benar di Streamlit:
-    # Ubah 'key' widget → Streamlit anggap widget baru → value kembali kosong.
-    # Tanpa ini, mengubah session_state.links_text tidak akan mengubah isi textbox
-    # karena Streamlit prioritaskan nilai yang user ketik (widget state) di atas
-    # nilai dari session_state.
-    input_key  = f"links_input_{st.session_state.clear_trigger}"
-    links_text = st.text_area(
-        label="links_input",
-        value=st.session_state.links_text,
-        placeholder="https://www.youtube.com/watch?v=...\nhttps://youtu.be/...\nhttps://www.youtube.com/shorts/...",
-        height=220,
-        label_visibility="collapsed",
+/* ── Kartu preview video ── */
+.yt-card {
+    background: #1E1E1E;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+}
+.yt-card-num   { font-size: 10px; font-weight: 700; letter-spacing: .06em;
+                 text-transform: uppercase; color: #E8472A; font-family: monospace; }
+.yt-card-title { font-weight: 600; font-size: 14px; color: #f0f0f0; margin: 4px 0; }
+.yt-card-meta  { font-size: 12px; color: #888; font-family: monospace; }
+.badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    letter-spacing: .05em; padding: 2px 8px; border-radius: 20px; margin-top: 4px;
+}
+.badge-short { background: #3B1515; color: #F87171; }
+.badge-vod   { background: #1B2A3B; color: #60A5FA; }
+.badge-error { background: #2A1A0A; color: #FB923C; }
+
+/* ── Warn box ── */
+.warn-box {
+    background: #2A1A0A;
+    border: 1.5px solid #92400E;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #FCD34D;
+    margin-bottom: 8px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# NAVBAR — dirender menggunakan st.button agar tidak reload
+# ══════════════════════════════════════════════════════════════════════
+def render_navbar():
+    col_brand, col_nav, col_right = st.columns([2, 3, 2])
+
+    with col_brand:
+        st.markdown(
+            '<div class="yt-navbar-brand">🎬 YT Sheet Tracker</div>',
+            unsafe_allow_html=True,
+        )
+
+    with col_nav:
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button(
+                "📥 Input Video",
+                use_container_width=True,
+                type="primary" if st.session_state.page == PAGE_VIDEO else "secondary",
+            ):
+                st.session_state.page = PAGE_VIDEO
+                st.rerun()
+        with c2:
+            if st.button(
+                "🗓️ Libur & Cuti",
+                use_container_width=True,
+                type="primary" if st.session_state.page == PAGE_LEAVE else "secondary",
+            ):
+                st.session_state.page = PAGE_LEAVE
+                st.rerun()
+
+    with col_right:
+        st.link_button("📊 Buka Google Sheets", SHEETS_URL, use_container_width=True)
+
+
+render_navbar()
+
+# Cek koneksi Google API
+if not _clients_ok:
+    st.error(f"❌ Gagal konek ke Google API: {_clients_err}")
+    st.stop()
+
+
+# ══════════════════════════════════════════════════════════════════════
+# HALAMAN 1 — INPUT VIDEO YOUTUBE
+# ══════════════════════════════════════════════════════════════════════
+def page_input_video():
+    st.subheader("📥 Input Video YouTube")
+    st.caption("Masukkan satu atau beberapa link YouTube, lalu fetch data sebelum mengirim ke Google Sheets.")
+
+    # ── TEXTBOX INPUT ─────────────────────────────────────────────
+    input_key = f"links_input_{st.session_state.clear_trigger}"
+    links_raw = st.text_area(
+        label="Link YouTube (satu per baris):",
+        value=st.session_state.links_raw,
+        placeholder=(
+            "https://www.youtube.com/watch?v=...\n"
+            "https://youtu.be/...\n"
+            "https://www.youtube.com/shorts/..."
+        ),
+        height=200,
         key=input_key,
     )
-    st.session_state.links_text = links_text   # sinkronkan tiap render
+    # Sinkronkan ke session_state setiap render
+    st.session_state.links_raw = links_raw
 
-    # ── PARSE & VALIDASI ───────────────────────────────────────────
-    raw_lines     = [l.strip() for l in links_text.split("\n") if l.strip()]
-    valid_links   = []
-    invalid_lines = []
+    # ── PARSE URL dari textbox ─────────────────────────────────────
+    raw_lines = [l.strip() for l in links_raw.splitlines() if l.strip()]
+    valid_urls   = [u for u in raw_lines if is_youtube_url(u)]
+    invalid_urls = [u for u in raw_lines if not is_youtube_url(u)]
 
-    for i, line in enumerate(raw_lines, 1):
-        if get_video_id(line):
-            valid_links.append((i, line))
-        else:
-            invalid_lines.append((i, line))
-
+    # Tampilkan ringkasan validasi URL
     if raw_lines:
-        invalid_msg = (
-            f"⚠️ <b>{len(invalid_lines)}</b> baris bukan link YouTube"
-            if invalid_lines else "🎉 Semua baris valid"
-        )
-        st.markdown(
-            f"<div style='font-size:13px;color:#7A776F'>"
-            f"✅ <b>{len(valid_links)}</b> link valid &nbsp;|&nbsp; {invalid_msg}"
-            f"</div>",
-            unsafe_allow_html=True
+        col_a, col_b = st.columns(2)
+        col_a.metric("✅ URL valid", len(valid_urls))
+        col_b.metric("❌ URL tidak valid", len(invalid_urls))
+
+        if len(valid_urls) > MAX_LINKS:
+            st.warning(
+                f"⚠️ Maksimal {MAX_LINKS} link per submit. "
+                f"Hanya {MAX_LINKS} link pertama yang akan diproses."
+            )
+            valid_urls = valid_urls[:MAX_LINKS]
+
+        if invalid_urls:
+            with st.expander(f"⚠️ {len(invalid_urls)} baris bukan URL YouTube valid", expanded=False):
+                for u in invalid_urls:
+                    st.markdown(f'<div class="warn-box">🔗 {u}</div>', unsafe_allow_html=True)
+
+    # ── TOMBOL FETCH ──────────────────────────────────────────────
+    st.markdown("")
+    col_fetch, col_clear = st.columns([3, 1])
+
+    with col_fetch:
+        fetch_disabled = len(valid_urls) == 0
+        do_fetch = st.button(
+            "🔍 Fetch Data Video",
+            use_container_width=True,
+            disabled=fetch_disabled,
+            help="Ambil data video dari YouTube. Wajib sebelum kirim ke Sheets.",
         )
 
-    if invalid_lines:
-        warn_text = ", ".join([f"Baris {i}" for i, _ in invalid_lines])
-        st.markdown(
-            f'<div class="warn-box">⚠️ Baris berikut bukan link YouTube yang valid '
-            f'dan akan dilewati: <b>{warn_text}</b></div>',
-            unsafe_allow_html=True
-        )
-
-    if len(valid_links) > MAX_LINKS:
-        st.error(f"❌ Maksimal {MAX_LINKS} link YouTube per pengiriman.")
-        valid_links = valid_links[:MAX_LINKS]
-
-    # ── TOMBOL KIRIM & HAPUS ───────────────────────────────────────
-    col_send, col_clear = st.columns([3, 1])
-    with col_send:
-        btn_send  = st.button("▶️ Kirim ke Google Sheets", use_container_width=True, type="primary")
     with col_clear:
-        btn_clear = st.button("🗑️ Hapus Semua", use_container_width=True)
+        do_clear = st.button("🗑️ Reset", use_container_width=True)
 
-    # ── HAPUS: increment trigger → key berubah → textbox kosong ───
-    if btn_clear:
-        st.session_state.links_text    = ""
-        st.session_state.preview_data  = []
+    if do_clear:
+        st.session_state.links_raw     = ""
+        st.session_state.fetch_results = []
+        st.session_state.submit_result = None
         st.session_state.clear_trigger += 1
         st.rerun()
 
-    # ── PREVIEW OTOMATIS ───────────────────────────────────────────
-    # Fetch hanya jika set video ID berubah (hemat API quota YouTube)
-    video_ids    = [get_video_id(url) for _, url in valid_links]
-    original_map = {get_video_id(url): url for _, url in valid_links}
+    if do_fetch:
+        st.session_state.submit_result = None  # reset hasil submit sebelumnya
+        with st.spinner(f"Mengambil data {len(valid_urls)} video dari YouTube..."):
+            st.session_state.fetch_results = fetch_videos(valid_urls)
+        st.rerun()
 
-    prev_ids = {item["id"] for item in st.session_state.preview_data}
-    curr_ids = set(vid for vid in video_ids if vid)
+    # ── TAMPILKAN HASIL FETCH ─────────────────────────────────────
+    fetch_results = st.session_state.fetch_results
+    ok_results    = [r for r in fetch_results if r["status"] == "ok"]
+    err_results   = [r for r in fetch_results if r["status"] != "ok"]
 
-    if curr_ids and curr_ids != prev_ids:
-        with st.spinner("Memuat preview video..."):
-            resp = youtube.videos().list(
-                part="snippet", id=",".join(list(curr_ids))
-            ).execute()
-            st.session_state.preview_data = resp.get("items", [])
-    elif not curr_ids:
-        st.session_state.preview_data = []
-
-    # ── TAMPILKAN PREVIEW – 3 kartu per baris ─────────────────────
-    if st.session_state.preview_data:
+    if fetch_results:
         st.markdown("---")
-        st.markdown('<div class="section-label">Preview Video</div>', unsafe_allow_html=True)
+        st.markdown(f"**Hasil Fetch** — {len(ok_results)} berhasil, {len(err_results)} gagal")
 
-        items = st.session_state.preview_data
-        for row_start in range(0, len(items), 3):
-            cols = st.columns(3)
-            for col_idx, item in enumerate(items[row_start:row_start + 3]):
-                vid_id    = item["id"]
-                title     = item["snippet"]["title"]
-                published = item["snippet"]["publishedAt"]
-                url       = original_map.get(vid_id, "")
-                is_short  = "/shorts/" in url
-                badge = (
-                    '<span class="yt-card-type badge-short">SHORT</span>'
-                    if is_short else
-                    '<span class="yt-card-type badge-vod">VOD</span>'
-                )
-                num = row_start + col_idx + 1
+        # Kartu preview — 3 per baris
+        if ok_results:
+            for row_start in range(0, len(ok_results), 3):
+                cols = st.columns(3)
+                for i, item in enumerate(ok_results[row_start:row_start + 3]):
+                    d       = item["data"]
+                    url     = item["url"]
+                    is_short = "/shorts/" in url
+                    badge   = (
+                        '<span class="badge badge-short">SHORT</span>'
+                        if is_short else
+                        '<span class="badge badge-vod">VOD</span>'
+                    )
+                    dt = parse_publish_date(d["published"])
+                    date_str = dt.strftime("%d-%m-%Y") if dt else d["published"]
+                    num = row_start + i + 1
 
-                with cols[col_idx]:
-                    st.markdown(f"""
-                    <div class="yt-card">
-                        <div class="yt-card-num">#{num}</div>
-                        <div class="yt-card-title">{title}</div>
-                        <div class="yt-card-meta">📅 {format_date(published)}</div>
-                        {badge}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.markdown(f"[🔗 Buka Video]({url})")
+                    with cols[i]:
+                        st.markdown(f"""
+                        <div class="yt-card">
+                            <div class="yt-card-num">#{num}</div>
+                            <div class="yt-card-title">{d['title']}</div>
+                            <div class="yt-card-meta">
+                                📅 {date_str} &nbsp;|&nbsp; 👁 {d['views']:,}
+                            </div>
+                            <div class="yt-card-meta">
+                                ✏️ {extract_editor(d['description'])}
+                            </div>
+                            {badge}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.markdown(f"[🔗 Buka Video]({url})")
 
-    # ── KIRIM KE GOOGLE SHEETS ─────────────────────────────────────
-    if btn_send:
-        if not video_ids:
-            st.error("❌ Tidak ada link YouTube yang valid untuk dikirim.")
-        else:
-            HEADERS  = ["Judul", "Link", "Editor", "Upload", "Views", "Keterangan"]
-            ws_short = get_or_create_worksheet("SHORT", HEADERS)
-            ws_vod   = get_or_create_worksheet("VOD",   HEADERS)
+        # Error fetch
+        if err_results:
+            with st.expander(f"❌ {len(err_results)} video gagal di-fetch", expanded=True):
+                for item in err_results:
+                    st.markdown(
+                        f'<div class="warn-box">🔗 <code>{item["url"]}</code><br>'
+                        f'Alasan: {item["error"]}</div>',
+                        unsafe_allow_html=True,
+                    )
 
+    # ── TOMBOL SUBMIT ─────────────────────────────────────────────
+    if fetch_results:
+        st.markdown("")
+        submit_disabled = len(ok_results) == 0
+        do_submit = st.button(
+            f"▶️ Kirim {len(ok_results)} Video ke Google Sheets",
+            use_container_width=True,
+            type="primary",
+            disabled=submit_disabled,
+            help="Hanya data yang berhasil di-fetch yang akan dikirim.",
+        )
+
+        if do_submit:
             with st.spinner("Mengirim data ke Google Sheets..."):
-                resp = youtube.videos().list(
-                    part="snippet,statistics",
-                    id=",".join(video_ids)
-                ).execute()
+                result = process_and_submit(fetch_results)
+            st.session_state.submit_result = result
 
-            success_titles = []
-            failed_ids     = []
-
-            for item in resp.get("items", []):
-                try:
-                    vid_id = item["id"]
-                    title  = item["snippet"]["title"]
-                    desc   = item["snippet"].get("description", "")
-                    pub    = item["snippet"]["publishedAt"]
-                    url    = original_map.get(vid_id, "")
-                    editor = extract_editor(desc)
-
-                    # FIX: Konversi views ke integer agar bisa dihitung di Sheets.
-                    # YouTube API mengembalikan string (mis. "181275"), bukan angka.
-                    # Tanpa konversi, gspread mengirimnya sebagai teks → Sheets
-                    # menyimpannya dengan prefix apostrof ('181275) → tidak bisa SUM.
-                    views_int = int(item.get("statistics", {}).get("viewCount", "0"))
-
-                    row = [title, url, editor, format_date(pub), views_int, ""]
-
-                    # value_input_option="USER_ENTERED" agar Sheets interpret
-                    # angka sebagai angka (bukan raw string)
-                    if "/shorts/" in url:
-                        ws_short.append_row(row, value_input_option="USER_ENTERED")
-                    else:
-                        ws_vod.append_row(row, value_input_option="USER_ENTERED")
-
-                    success_titles.append(title)
-                except Exception as e:
-                    failed_ids.append((vid_id, str(e)))
-
-            if success_titles:
-                st.success(f"🎉 Berhasil mengirim **{len(success_titles)}** video ke Google Sheets!")
-
-            if failed_ids:
-                for vid, err in failed_ids:
-                    st.warning(f"⚠️ Gagal mengirim `{vid}`: {err}")
-                # Sisakan hanya link yang gagal di textbox
-                failed_set = {v for v, _ in failed_ids}
-                remaining  = "\n".join(
-                    u for v, u in original_map.items() if v in failed_set
-                )
-                st.session_state.links_text   = remaining
-                st.session_state.preview_data = []
-            else:
-                # Semua berhasil → kosongkan input & preview
-                st.session_state.links_text    = ""
-                st.session_state.preview_data  = []
-                st.session_state.clear_trigger += 1   # trigger reset textbox
+            # Tentukan reset atau tidak
+            all_failed = len(result["success"]) == 0
+            if not all_failed:
+                # Ada yang berhasil → kosongkan form
+                remaining_urls = [f["url"] for f in result["failed"]]
+                if remaining_urls:
+                    # Sisakan yang gagal
+                    st.session_state.links_raw     = "\n".join(remaining_urls)
+                    st.session_state.clear_trigger += 1
+                else:
+                    # Semua sukses → reset penuh
+                    st.session_state.links_raw     = ""
+                    st.session_state.clear_trigger += 1
+                st.session_state.fetch_results = []
+            # all_failed → jangan reset, biarkan user coba lagi
 
             st.rerun()
 
+    # ── TAMPILKAN HASIL SUBMIT ─────────────────────────────────────
+    submit_result = st.session_state.submit_result
+    if submit_result:
+        if submit_result["success"]:
+            st.success(
+                f"🎉 **{len(submit_result['success'])} video** berhasil dikirim ke Google Sheets!"
+            )
+            with st.expander("Lihat daftar video yang berhasil", expanded=False):
+                for title in submit_result["success"]:
+                    st.markdown(f"- {title}")
 
-# ═══════════════════════════════════════════════════════════════════
-# HALAMAN 2 – LIBUR & CUTI
-# ═══════════════════════════════════════════════════════════════════
-else:
-    st.markdown("""
-    <div class="page-header">
-        <div class="page-header-icon">🗓️</div>
-        <div>
-            <div class="page-header-title">Entri Hari Libur & Cuti</div>
-            <div class="page-header-sub">Catat ketidakhadiran editor ke Google Sheets</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        if submit_result["failed"]:
+            st.error(
+                f"❌ **{len(submit_result['failed'])} video** gagal dikirim:"
+            )
+            for f in submit_result["failed"]:
+                st.markdown(
+                    f'<div class="warn-box">🔗 <code>{f["url"]}</code><br>'
+                    f'Alasan: {f["reason"]}</div>',
+                    unsafe_allow_html=True,
+                )
+
+        if not submit_result["success"] and not submit_result["failed"]:
+            st.warning("⚠️ Tidak ada data yang diproses.")
+
+
+# ══════════════════════════════════════════════════════════════════════
+# HALAMAN 2 — LIBUR & CUTI
+# ══════════════════════════════════════════════════════════════════════
+def page_libur_cuti():
+    st.subheader("🗓️ Entri Hari Libur & Cuti")
+    st.caption("Catat ketidakhadiran editor ke Google Sheets (sheet VOD & SHORT).")
 
     col_form, _ = st.columns([2, 1])
 
     with col_form:
         leave_date = st.date_input("📅 Tanggal")
+        leave_type = st.selectbox("📋 Jenis Kegiatan", LEAVE_OPTIONS)
 
-        LEAVE_OPTIONS = ["Libur", "Cuti", "Izin", "Sakit", "Lainnya"]
-        leave_type    = st.selectbox("📋 Jenis Kegiatan", LEAVE_OPTIONS)
-
-        # Tampilkan field kustom saat pilih "Lainnya" (wajib diisi)
         custom_activity = ""
         if leave_type == "Lainnya":
             custom_activity = st.text_input(
                 "✏️ Isi Kegiatan *",
-                placeholder="Contoh: Rapat, Perjalanan Dinas, dll."
+                placeholder="Contoh: Rapat, Perjalanan Dinas, dll.",
             )
 
-        editor = st.selectbox("👤 Editor", ["Erricson Bernedy S"])
+        editor = st.selectbox("👤 Editor", EDITOR_LIST)
 
         st.markdown("")
-        btn_leave = st.button("💾 Simpan Entri", type="primary", use_container_width=True)
+        do_save = st.button("💾 Simpan Entri", type="primary", use_container_width=True)
 
-        # Info box di bawah tombol dengan warna yang jelas
-        st.markdown("""
-        <div style="background:#EEF4FF;border:1px solid #BDD3FF;border-radius:10px;
-                    padding:14px 16px;margin-top:16px">
-            <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:#1A1916 !important">
-                📌 Info
-            </div>
-            <div style="font-size:13px;color:#3D3D3D;line-height:1.7">
-                Entri akan dicatat ke sheet <b>VOD</b> dan <b>SHORT</b> sekaligus,
-                pada kolom <i>Keterangan</i>.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.info(
+            "📌 **Info:** Entri akan dicatat ke sheet **VOD** dan **SHORT** sekaligus, "
+            "pada kolom *Keterangan*."
+        )
 
-    # ── SIMPAN ENTRI ───────────────────────────────────────────────
-    if btn_leave:
-        # Validasi: field "Lainnya" wajib diisi sebelum simpan
+    # ── VALIDASI & SIMPAN ─────────────────────────────────────────
+    if do_save:
         if leave_type == "Lainnya":
             if not custom_activity.strip():
-                st.error("❌ Kolom 'Isi Kegiatan' wajib diisi saat memilih Lainnya.")
+                st.error("❌ Kolom 'Isi Kegiatan' wajib diisi saat memilih 'Lainnya'.")
                 st.stop()
             keterangan = custom_activity.strip()
         else:
             keterangan = leave_type
 
-        formatted_date = leave_date.strftime("%d-%m-%Y")
-        row = ["", "", editor, formatted_date, "", keterangan]
+        # Gunakan serial date agar Sheets membaca sebagai DATE
+        dt_leave       = datetime(leave_date.year, leave_date.month, leave_date.day)
+        tanggal_serial = date_to_sheets_serial(dt_leave)
 
-        HEADERS  = ["Judul", "Link", "Editor", "Upload", "Views", "Keterangan"]
-        ws_vod   = get_or_create_worksheet("VOD",   HEADERS)
-        ws_short = get_or_create_worksheet("SHORT", HEADERS)
+        # Urutan kolom: Tanggal | Editor | Judul | Link | Views | Keterangan
+        row = [tanggal_serial, editor, "", "", "", keterangan]
 
         try:
-            ws_vod.append_row(row)
-            ws_short.append_row(row)
+            ws_vod   = get_or_create_worksheet("VOD",   SHEET_HEADERS)
+            ws_short = get_or_create_worksheet("SHORT", SHEET_HEADERS)
+
+            ws_vod.append_row(row,   value_input_option="USER_ENTERED")
+            ws_short.append_row(row, value_input_option="USER_ENTERED")
+
             st.success(
                 f"✅ Entri **{keterangan}** untuk **{editor}** "
-                f"pada **{formatted_date}** berhasil disimpan!"
+                f"pada **{leave_date.strftime('%d-%m-%Y')}** berhasil disimpan!"
             )
         except Exception as e:
             st.error(f"❌ Gagal menyimpan entri: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ROUTER — tampilkan halaman sesuai state
+# ══════════════════════════════════════════════════════════════════════
+if st.session_state.page == PAGE_VIDEO:
+    page_input_video()
+else:
+    page_libur_cuti()
