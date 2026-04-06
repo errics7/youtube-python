@@ -128,16 +128,6 @@ def parse_publish_date(iso_str: str) -> datetime | None:
     return None
 
 
-def date_to_sheets_serial(dt: datetime) -> int:
-    """
-    Konversi datetime ke serial number Google Sheets (Lotus 1-2-3 epoch).
-    Ini memastikan kolom Tanggal dibaca sebagai DATE oleh Sheets (=ISDATE() → TRUE).
-    Epoch Sheets: 30 Desember 1899.
-    """
-    epoch = datetime(1899, 12, 30)
-    delta = dt.replace(tzinfo=None) - epoch
-    return delta.days
-
 
 def extract_editor(description: str) -> str:
     """Ambil nama editor dari baris 'Editor Video: ...' di deskripsi."""
@@ -266,9 +256,9 @@ def process_and_submit(fetch_results: list[dict]) -> dict:
             if dt is None:
                 raise ValueError(f"Gagal parsing tanggal: {pub_iso!r}")
 
-            tanggal_serial = date_to_sheets_serial(dt)
+            tanggal = dt.strftime("%Y-%m-%d")
 
-            row = [tanggal_serial, editor, title, url, views, keterangan]
+            row = [tanggal, editor, title, url, views, keterangan]
 
             ws = ws_short if "/shorts/" in url else ws_vod
             ws.append_row(row, value_input_option="USER_ENTERED")
@@ -627,12 +617,11 @@ def page_libur_cuti():
         else:
             keterangan = leave_type
 
-        # Gunakan serial date agar Sheets membaca sebagai DATE
-        dt_leave       = datetime(leave_date.year, leave_date.month, leave_date.day)
-        tanggal_serial = date_to_sheets_serial(dt_leave)
+        # Format ISO agar Google Sheets otomatis baca sebagai DATE dengan USER_ENTERED
+        tanggal = leave_date.strftime("%Y-%m-%d")
 
         # Urutan kolom: Tanggal | Editor | Judul | Link | Views | Keterangan
-        row = [tanggal_serial, editor, "", "", "", keterangan]
+        row = [tanggal, editor, "", "", "", keterangan]
 
         try:
             ws_vod   = get_or_create_worksheet("VOD",   SHEET_HEADERS)
